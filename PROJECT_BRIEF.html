@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Resurface — Project Brief</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 20mm 16mm; }
+
+  :root {
+    --ink:      #14181d;
+    --body:     #2b3238;
+    --mid:      #5d6873;
+    --faint:    #8b959e;
+    --rule:     #dde3e8;
+    --soft:     #f4f6f8;
+    --accent:   #0f6e64;   /* deep teal — one accent, used sparingly */
+    --accent-bg:#e8f2f0;
+    --warn:     #8a5a10;
+    --warn-bg:  #fdf5e6;
+    --crit:     #9b3430;
+    --crit-bg:  #fbeeed;
+    --ok:       #2c6b49;
+    --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    --sans: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    font-family: var(--sans); color: var(--body); margin: 0;
+    font-size: 10.4pt; line-height: 1.55; -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  h1, h2, h3, h4 { color: var(--ink); font-weight: 650; line-height: 1.22; margin: 0; }
+  p { margin: 0 0 8pt; }
+  strong { color: var(--ink); font-weight: 640; }
+  code { font-family: var(--mono); font-size: 0.88em; background: var(--soft); padding: 0.5pt 3pt; border-radius: 2pt; }
+  a { color: var(--accent); text-decoration: none; }
+
+  /* ── cover ── */
+  .cover { height: 246mm; display: flex; flex-direction: column; justify-content: center; page-break-after: always; }
+  .cover .eyebrow { font-family: var(--mono); font-size: 9pt; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); margin-bottom: 10pt; }
+  .cover h1 { font-size: 40pt; letter-spacing: -1pt; margin-bottom: 6pt; }
+  .cover .tag { font-size: 14pt; color: var(--mid); max-width: 130mm; line-height: 1.4; }
+  .cover .rule { height: 3pt; width: 60pt; background: var(--accent); margin: 16pt 0; }
+  .cover dl { display: grid; grid-template-columns: 34mm 1fr; gap: 4pt 10pt; margin: 20pt 0 0; font-size: 9.6pt; }
+  .cover dt { font-family: var(--mono); font-size: 8.4pt; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); padding-top: 1.5pt; }
+  .cover dd { margin: 0; color: var(--ink); }
+
+  /* ── structure ── */
+  h2 { font-size: 17pt; margin: 0 0 3pt; padding-bottom: 5pt; border-bottom: 2pt solid var(--ink); }
+  h2 .num { font-family: var(--mono); font-size: 11pt; color: var(--accent); margin-right: 7pt; }
+  .lede { color: var(--mid); font-size: 11pt; margin: 0 0 14pt; }
+  h3 { font-size: 12.4pt; margin: 16pt 0 5pt; }
+  h4 { font-size: 10.6pt; margin: 11pt 0 3pt; color: var(--accent); }
+  section { page-break-before: always; }
+  section.first { page-break-before: avoid; }
+  .avoid-break { page-break-inside: avoid; }
+
+  /* ── tables ── */
+  table { width: 100%; border-collapse: collapse; margin: 8pt 0 12pt; font-size: 9.3pt; }
+  th, td { text-align: left; padding: 5pt 7pt; border-bottom: 0.6pt solid var(--rule); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 8pt; text-transform: uppercase; letter-spacing: .07em;
+       color: var(--faint); border-bottom: 1pt solid var(--ink); font-weight: 600; }
+  td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tbody tr:nth-child(even) { background: #fafbfc; }
+
+  /* ── callouts ── */
+  .box { border-left: 3pt solid var(--accent); background: var(--accent-bg); padding: 9pt 11pt; margin: 10pt 0; page-break-inside: avoid; }
+  .box.warn { border-color: var(--warn); background: var(--warn-bg); }
+  .box.crit { border-color: var(--crit); background: var(--crit-bg); }
+  .box .label { font-family: var(--mono); font-size: 8pt; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 3pt; }
+  .box.warn .label { color: var(--warn); }
+  .box.crit .label { color: var(--crit); }
+  .box p:last-child { margin-bottom: 0; }
+
+  /* ── prerequisite blocks ── */
+  .prereq { border: 0.8pt solid var(--rule); border-radius: 3pt; padding: 9pt 11pt; margin: 9pt 0; background: #fcfdfd; page-break-inside: avoid; }
+  .prereq h5 { font-family: var(--mono); font-size: 8.2pt; letter-spacing: .1em; text-transform: uppercase;
+               color: var(--ink); margin: 0 0 6pt; font-weight: 700; }
+  .prereq ol { margin: 0; padding-left: 15pt; }
+  .prereq li { margin-bottom: 5pt; }
+  .prereq li b { color: var(--ink); }
+  .gate { font-family: var(--mono); font-size: 8.6pt; color: var(--crit); margin-top: 6pt; padding-top: 5pt; border-top: 0.6pt dashed var(--rule); }
+
+  /* ── phase header ── */
+  .ph { display: flex; align-items: baseline; gap: 9pt; margin: 18pt 0 2pt; page-break-after: avoid; }
+  .ph .wk { font-family: var(--mono); font-size: 8.4pt; color: #fff; background: var(--ink); padding: 2pt 6pt; border-radius: 2pt; white-space: nowrap; }
+  .ph h3 { margin: 0; }
+  .out { font-size: 9.4pt; color: var(--mid); border-top: 0.6pt solid var(--rule); padding-top: 5pt; margin-top: 8pt; }
+  .out b { font-family: var(--mono); font-size: 8pt; text-transform: uppercase; letter-spacing: .07em; color: var(--faint); display: block; }
+
+  ul.tight { margin: 4pt 0 8pt; padding-left: 15pt; }
+  ul.tight li { margin-bottom: 3pt; }
+  figure { margin: 12pt 0 14pt; page-break-inside: avoid; }
+  figcaption { font-size: 8.6pt; color: var(--faint); margin-top: 5pt; font-family: var(--mono); }
+  svg { display: block; width: 100%; height: auto; }
+  pre { background: var(--soft); border-left: 2.5pt solid var(--rule); padding: 8pt 10pt; margin: 8pt 0;
+        font-family: var(--mono); font-size: 8.3pt; line-height: 1.45; overflow-x: auto; page-break-inside: avoid; }
+  .toc { columns: 2; column-gap: 14mm; font-size: 9.6pt; }
+  .toc div { margin-bottom: 4pt; break-inside: avoid; }
+  .toc .n { font-family: var(--mono); color: var(--accent); margin-right: 6pt; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ COVER ══════════ -->
+<div class="cover">
+  <p class="eyebrow">Project brief &middot; v1 &middot; 20 August 2026</p>
+  <h1>Resurface</h1>
+  <div class="rule"></div>
+  <p class="tag">It turns the stuff you save and never watch into something you can actually search.</p>
+  <dl>
+    <dt>Built by</dt><dd>Gulfam Khan</dd>
+    <dt>Purpose</dt><dd>A public artifact that carries senior-shaped engineering signals</dd>
+    <dt>Duration</dt><dd>10–14 weeks at 1–2 h weekdays plus weekends</dd>
+    <dt>Running cost</dt><dd>$0 idle &middot; under $5/month at hobby scale</dd>
+    <dt>Stack</dt><dd>TypeScript &middot; Postgres (Neon) &middot; Cloudflare Workers &middot; Cloud Run &middot; OpenTelemetry &middot; Claude</dd>
+    <dt>Repo</dt><dd><code>/Users/Me/resurface</code> — week 1 code already written</dd>
+  </dl>
+</div>
+
+<!-- ══════════ TOC ══════════ -->
+<section class="first">
+  <h2><span class="num">00</span>Contents</h2>
+  <div class="toc">
+    <div><span class="n">01</span>Why this exists</div>
+    <div><span class="n">02</span>What it is</div>
+    <div><span class="n">03</span>Who it is for</div>
+    <div><span class="n">04</span>How it works — architecture</div>
+    <div><span class="n">05</span>The three diagrams</div>
+    <div><span class="n">06</span>Every technology, and why</div>
+    <div><span class="n">07</span>What was rejected, and why</div>
+    <div><span class="n">08</span>The five engineering features</div>
+    <div><span class="n">09</span>Phases 1–10, in depth</div>
+    <div><span class="n">10</span>Cost estimate</div>
+    <div><span class="n">11</span>Timeline and effort</div>
+    <div><span class="n">12</span>What you will be able to claim</div>
+    <div><span class="n">13</span>Risks and honest warnings</div>
+  </div>
+
+  <h2 style="margin-top:22pt"><span class="num">01</span>Why this exists</h2>
+  <p class="lede">The problem is not that you lack skill. It is that you have nothing you can show.</p>
+
+  <p>Your real work sits in two places, and neither can be pointed at. <strong>Mylo is private</strong> — 200+ backend modules, six production databases, reconciliation work that recovered ₹19.4M in misbooked payments, and none of it can be shown to a stranger. The <strong>job pipeline</strong> is public code you own, but you have ruled it out as a showcase, correctly: telling an employer you automated applications across nine job boards signals mass-applying, whatever the engineering quality.</p>
+
+  <p>So application forms ask "link us to something you have built" and the honest answer is currently nothing. That is the gap this project closes — and only that. It is not a business, not a startup, not a portfolio piece to be abandoned at 60%.</p>
+
+  <div class="box">
+    <span class="label">Your own objection, and the answer</span>
+    <p>You said: <em>"only calling LLM API and getting response and showing to user is same as creating CRUD."</em> You were right, and that objection is the design constraint for this whole project.</p>
+    <p><strong>The answer: the LLM call is the cheapest, easiest part.</strong> The engineering exists because the operation being wrapped is slow (minutes, not milliseconds), expensive (real money per call), non-deterministic (the same input can give different output), and fails halfway through. CRUD is never any of those things. If this project ever degenerates into paste → call → render, <em>it has failed</em> and should be abandoned.</p>
+  </div>
+
+  <p>Everything in the phase plan exists to keep that from happening. The queue, the leases, the cost cascade, the resumability, the evals — each one is a thing you can only build because the wrapped operation is hostile.</p>
+</section>
+
+<!-- ══════════ WHAT ══════════ -->
+<section>
+  <h2><span class="num">02</span>What it is</h2>
+  <p class="lede">Save-it-and-actually-find-it.</p>
+
+  <p>You forward a link — a YouTube video, a podcast episode, an article, or an audio file. The system transcribes it, works out what is <em>actually inside it</em> (a recipe, a workout, a book recommendation, a place worth visiting), and stores that as structured, searchable data instead of another unread bookmark.</p>
+
+  <p>The one-sentence version for a recruiter who is not technical: <strong>"It turns the stuff you save and never watch into something you can actually search."</strong> That sentence is deliberately boring and deliberately understandable. The interesting part is underneath, and it only comes up when an engineer asks.</p>
+
+  <h3>Deliberately out of scope</h3>
+  <table>
+    <thead><tr><th>Excluded</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Instagram &amp; TikTok</strong></td><td>Terms-of-service hostile and actively blocked. Identical engineering, none of the legal cliff. This is a judgement call worth being able to explain in an interview.</td></tr>
+      <tr><td><strong>Live progress streaming (SSE)</strong></td><td>Dropped on purpose. The UX is poll-for-status — slightly duller to demo, materially simpler to build. Can be added later.</td></tr>
+      <tr><td><strong>Hybrid search (BM25 + embeddings)</strong></td><td>Deferred. Plain Postgres full-text is enough to prove the pipeline; vector search is a separate project's worth of learning.</td></tr>
+      <tr><td><strong>Accounts, billing, teams</strong></td><td>Not the point. A handful of real users on a shared link is the target, not a product launch.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box warn">
+    <span class="label">The failure mode to watch for</span>
+    <p>The temptation will be to make the UI nice. Resist it until week 9. A beautiful interface over a queue that loses jobs is worth nothing in an interview; an ugly page over a queue that provably survives <code>kill -9</code> is worth a great deal. The demo is the trace and the chaos report, not the front end.</p>
+  </div>
+</section>
+
+<!-- ══════════ WHO ══════════ -->
+<section>
+  <h2><span class="num">03</span>Who it is for</h2>
+  <p class="lede">Three audiences, and they want completely different things from it.</p>
+
+  <table>
+    <thead><tr><th style="width:22%">Audience</th><th style="width:30%">What they want</th><th>What they will actually look at</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>You</strong><br><span style="color:var(--faint)">the real primary user</span></td>
+        <td>To close the biggest gap in your CV: everything you have built so far is <em>cron-driven</em>. You have never built a real queue.</td>
+        <td>Nothing. You will be inside it. The value is the 60% of this that is new to you — leases, visibility timeouts, backpressure, fairness, OpenTelemetry, evaluating non-deterministic output.</td>
+      </tr>
+      <tr>
+        <td><strong>A non-technical recruiter</strong></td>
+        <td>One sentence they can repeat to a hiring manager, and evidence you finish things.</td>
+        <td>The live URL, whether it works when they click it, and the README's first paragraph. They will not read code.</td>
+      </tr>
+      <tr>
+        <td><strong>An engineer or EM interviewing you</strong></td>
+        <td>Evidence you have made real trade-offs and survived real failures.</td>
+        <td>The fair-queueing SQL, the incident write-ups, the eval suite, and how you answer <em>"how do you know the extraction is correct?"</em></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="box">
+    <span class="label">Your unfair advantage — lean on this</span>
+    <p>You are the reconciliation person. You have spent months proving that two systems which disagree about money can be made to agree, and you found ₹19.4M of misbookings doing it. Point that instinct at LLM output and you get the question almost nobody building AI products in 2026 can answer:</p>
+    <p><strong>"How do I know the extraction is right, without a human checking it?"</strong></p>
+    <p>Cross-check every extracted item against the transcript it came from. Score confidence per field, not per document. Gate low-confidence fields instead of showing them. Feed user corrections back as regression cases. That is reconciliation applied to a probabilistic system, and it is a genuinely distinctive thing to have built.</p>
+  </div>
+</section>
+
+<!-- ══════════ HOW ══════════ -->
+<section>
+  <h2><span class="num">04</span>How it works — architecture</h2>
+  <p class="lede">Two runtimes, one database acting as the message broker.</p>
+
+  <p>The shape is dictated by one hard constraint and one deliberate choice.</p>
+
+  <h4>The constraint: the free front door cannot do work</h4>
+  <p>Cloudflare Workers is free, genuinely never sleeps, and handles 100,000 requests a day — but it allows <strong>10 milliseconds of CPU per invocation</strong>. Waiting on the network does not count against it, so it can accept a request, write a row, and reply. It physically cannot transcribe audio. That forces a split between an always-on front door and an expensive back room, which is a real architectural pattern rather than an artifact of the free tier.</p>
+
+  <h4>The choice: Postgres is the queue</h4>
+  <p>No SQS, no Redis, no Kafka. <code>SELECT … FOR UPDATE SKIP LOCKED</code> with leases, visibility timeouts and per-user fairness, implemented by hand. A managed queue would hide every one of those mechanisms behind a configuration flag — and those mechanisms <em>are the curriculum</em>. You cannot claim to understand backpressure because you set <code>maxReceiveCount</code> in a console.</p>
+
+  <pre>forward a link  (Telegram bot / web form)
+      │
+      ▼
+  EDGE API — Cloudflare Workers          always-on, free, I/O only (10 ms CPU)
+      │                                  accept · enqueue · report status
+      ▼
+  POSTGRES = THE QUEUE — Neon            SELECT … FOR UPDATE SKIP LOCKED
+      │                                  leases · fairness · partial unique index
+      ▼
+  WORKERS — Cloud Run                    long-running, CPU-heavy, scales to zero
+      │   resolve → source → transcribe → extract → verify → index
+      ▼
+  R2 (audio + transcripts)   ·   OpenTelemetry → Grafana Cloud</pre>
+</section>
+
+<!-- ══════════ DIAGRAMS ══════════ -->
+<section>
+  <h2><span class="num">05</span>The three diagrams</h2>
+  <p class="lede">One for the shape, one for the lifecycle, one for the money.</p>
+
+  <figure>
+    <svg viewBox="0 0 740 520" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, Arial, sans-serif">
+      <defs>
+        <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#5d6873"/>
+        </marker>
+      </defs>
+
+      <!-- runtime lane labels -->
+      <text x="4" y="60"  font-size="8" fill="#8b959e" font-family="monospace">CLIENT</text>
+      <text x="4" y="140" font-size="8" fill="#8b959e" font-family="monospace">EDGE</text>
+      <text x="4" y="248" font-size="8" fill="#8b959e" font-family="monospace">QUEUE</text>
+      <text x="4" y="380" font-size="8" fill="#8b959e" font-family="monospace">WORKERS</text>
+      <text x="4" y="492" font-size="8" fill="#8b959e" font-family="monospace">STORAGE</text>
+      <line x1="70" y1="20" x2="70" y2="510" stroke="#eef2f5" stroke-width="1"/>
+
+      <!-- client -->
+      <rect x="250" y="34" width="240" height="46" rx="23" fill="#f4f6f8" stroke="#dde3e8"/>
+      <text x="370" y="55" font-size="11" fill="#14181d" text-anchor="middle" font-weight="600">Forward a link</text>
+      <text x="370" y="69" font-size="8.5" fill="#5d6873" text-anchor="middle">Telegram bot · web form</text>
+      <line x1="370" y1="80" x2="370" y2="106" stroke="#5d6873" stroke-width="1.4" marker-end="url(#a1)"/>
+
+      <!-- edge -->
+      <rect x="190" y="108" width="360" height="62" rx="4" fill="#e8f2f0" stroke="#0f6e64" stroke-width="1.3"/>
+      <text x="370" y="128" font-size="11" fill="#0f6e64" text-anchor="middle" font-weight="700">EDGE API — Cloudflare Workers</text>
+      <text x="370" y="143" font-size="8.8" fill="#2b3238" text-anchor="middle">accept · deduplicate · enqueue · report status</text>
+      <text x="370" y="159" font-size="8" fill="#9b3430" text-anchor="middle" font-family="monospace">hard limit: 10 ms CPU — I/O only, cannot do work</text>
+      <line x1="370" y1="170" x2="370" y2="198" stroke="#5d6873" stroke-width="1.4" marker-end="url(#a1)"/>
+
+      <!-- queue -->
+      <rect x="150" y="200" width="440" height="92" rx="4" fill="#fff" stroke="#14181d" stroke-width="1.6"/>
+      <text x="370" y="220" font-size="11.5" fill="#14181d" text-anchor="middle" font-weight="700">POSTGRES IS THE QUEUE — Neon</text>
+      <line x1="166" y1="228" x2="574" y2="228" stroke="#dde3e8"/>
+      <text x="370" y="244" font-size="8.6" fill="#2b3238" text-anchor="middle" font-family="monospace">jobs · chunks · side_effects · job_runs</text>
+      <text x="370" y="259" font-size="8.6" fill="#2b3238" text-anchor="middle">leases · exponential backoff · per-user fairness</text>
+      <text x="370" y="275" font-size="8.4" fill="#0f6e64" text-anchor="middle" font-family="monospace">UNIQUE(asset_id, kind) WHERE state IN ('queued','leased')</text>
+
+      <!-- claim / complete arrows -->
+      <path d="M250,292 L250,330" stroke="#5d6873" stroke-width="1.4" marker-end="url(#a1)" fill="none"/>
+      <text x="196" y="315" font-size="8" fill="#5d6873" font-family="monospace">claim</text>
+      <path d="M490,330 L490,292" stroke="#5d6873" stroke-width="1.4" marker-end="url(#a1)" fill="none"/>
+      <text x="500" y="315" font-size="8" fill="#5d6873" font-family="monospace">complete / fail</text>
+
+      <!-- workers -->
+      <rect x="110" y="332" width="520" height="106" rx="4" fill="#fbfcfd" stroke="#5d6873" stroke-width="1.2"/>
+      <text x="370" y="351" font-size="11" fill="#14181d" text-anchor="middle" font-weight="700">WORKERS — Cloud Run · scales to zero</text>
+      <g font-size="8.3" text-anchor="middle">
+        <rect x="126" y="362" width="86" height="34" rx="3" fill="#fff" stroke="#dde3e8"/>
+        <text x="169" y="378" fill="#14181d" font-weight="600">resolve</text>
+        <text x="169" y="390" fill="#8b959e" font-size="7.4">what is this?</text>
+
+        <rect x="220" y="362" width="86" height="34" rx="3" fill="#fff" stroke="#dde3e8"/>
+        <text x="263" y="378" fill="#14181d" font-weight="600">source</text>
+        <text x="263" y="390" fill="#8b959e" font-size="7.4">cost cascade</text>
+
+        <rect x="314" y="362" width="90" height="34" rx="3" fill="#fff" stroke="#dde3e8"/>
+        <text x="359" y="378" fill="#14181d" font-weight="600">transcribe</text>
+        <text x="359" y="390" fill="#8b959e" font-size="7.4">chunked</text>
+
+        <rect x="412" y="362" width="86" height="34" rx="3" fill="#fff" stroke="#dde3e8"/>
+        <text x="455" y="378" fill="#14181d" font-weight="600">extract</text>
+        <text x="455" y="390" fill="#8b959e" font-size="7.4">Claude</text>
+
+        <rect x="506" y="362" width="110" height="34" rx="3" fill="#fff" stroke="#0f6e64"/>
+        <text x="561" y="378" fill="#0f6e64" font-weight="700">verify + index</text>
+        <text x="561" y="390" fill="#8b959e" font-size="7.4">the distinctive bit</text>
+      </g>
+      <text x="370" y="416" font-size="8.2" fill="#5d6873" text-anchor="middle" font-family="monospace">every stage checkpoints into chunks — a death at 7/12 resumes at 7</text>
+      <text x="370" y="430" font-size="8" fill="#8a5a10" text-anchor="middle">heartbeat extends the lease; stop heartbeating and you are reclaimed</text>
+
+      <line x1="230" y1="438" x2="230" y2="462" stroke="#5d6873" stroke-width="1.2" marker-end="url(#a1)"/>
+      <line x1="510" y1="438" x2="510" y2="462" stroke="#5d6873" stroke-width="1.2" marker-end="url(#a1)"/>
+
+      <!-- storage -->
+      <rect x="110" y="464" width="250" height="40" rx="4" fill="#f4f6f8" stroke="#dde3e8"/>
+      <text x="235" y="480" font-size="9.6" fill="#14181d" text-anchor="middle" font-weight="600">R2 object storage</text>
+      <text x="235" y="494" font-size="8" fill="#5d6873" text-anchor="middle">audio · transcripts</text>
+
+      <rect x="380" y="464" width="250" height="40" rx="4" fill="#f4f6f8" stroke="#dde3e8"/>
+      <text x="505" y="480" font-size="9.6" fill="#14181d" text-anchor="middle" font-weight="600">OpenTelemetry → Grafana</text>
+      <text x="505" y="494" font-size="8" fill="#5d6873" text-anchor="middle">traces with cost attached as a span attribute</text>
+    </svg>
+    <figcaption>Fig 1 — System architecture. The split at the edge is forced by a 10 ms CPU limit, not chosen for elegance.</figcaption>
+  </figure>
+
+  <figure>
+    <svg viewBox="0 0 740 300" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, Arial, sans-serif">
+      <defs>
+        <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#5d6873"/>
+        </marker>
+      </defs>
+
+      <rect x="30" y="120" width="120" height="52" rx="26" fill="#fff" stroke="#14181d" stroke-width="1.5"/>
+      <text x="90" y="143" font-size="11" text-anchor="middle" font-weight="700" fill="#14181d">queued</text>
+      <text x="90" y="157" font-size="7.6" text-anchor="middle" fill="#8b959e" font-family="monospace">available_at ≤ now()</text>
+
+      <line x1="150" y1="146" x2="240" y2="146" stroke="#5d6873" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="195" y="138" font-size="8" text-anchor="middle" fill="#0f6e64" font-family="monospace">claim</text>
+      <text x="195" y="160" font-size="7.4" text-anchor="middle" fill="#8b959e">SKIP LOCKED</text>
+
+      <rect x="242" y="118" width="140" height="56" rx="4" fill="#e8f2f0" stroke="#0f6e64" stroke-width="1.5"/>
+      <text x="312" y="140" font-size="11" text-anchor="middle" font-weight="700" fill="#0f6e64">leased</text>
+      <text x="312" y="154" font-size="7.6" text-anchor="middle" fill="#2b3238" font-family="monospace">+ lease_token</text>
+      <text x="312" y="166" font-size="7.4" text-anchor="middle" fill="#8b959e">heartbeat to hold it</text>
+
+      <!-- to done -->
+      <line x1="382" y1="132" x2="500" y2="96" stroke="#5d6873" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="440" y="103" font-size="8" text-anchor="middle" fill="#2c6b49" font-family="monospace">complete</text>
+      <rect x="502" y="70" width="120" height="48" rx="4" fill="#fff" stroke="#2c6b49" stroke-width="1.5"/>
+      <text x="562" y="90" font-size="11" text-anchor="middle" font-weight="700" fill="#2c6b49">done</text>
+      <text x="562" y="104" font-size="7.4" text-anchor="middle" fill="#8b959e">one side_effect row</text>
+
+      <!-- to dead -->
+      <line x1="382" y1="162" x2="500" y2="200" stroke="#5d6873" stroke-width="1.5" marker-end="url(#a2)"/>
+      <text x="428" y="186" font-size="8" text-anchor="middle" fill="#9b3430" font-family="monospace">attempts &gt; max</text>
+      <rect x="502" y="176" width="120" height="48" rx="4" fill="#fbeeed" stroke="#9b3430" stroke-width="1.5"/>
+      <text x="562" y="196" font-size="11" text-anchor="middle" font-weight="700" fill="#9b3430">dead</text>
+      <text x="562" y="210" font-size="7.4" text-anchor="middle" fill="#8b959e">poison, parked not looping</text>
+
+      <!-- retry loop -->
+      <path d="M300,174 C300,240 100,240 88,174" stroke="#8a5a10" stroke-width="1.4" fill="none" marker-end="url(#a2)"/>
+      <text x="196" y="250" font-size="8" text-anchor="middle" fill="#8a5a10" font-family="monospace">fail → backoff 2^n × jitter</text>
+
+      <!-- reclaim loop -->
+      <path d="M330,118 C330,44 120,44 96,118" stroke="#0f6e64" stroke-width="1.4" fill="none" marker-end="url(#a2)" stroke-dasharray="4 3"/>
+      <text x="212" y="36" font-size="8" text-anchor="middle" fill="#0f6e64" font-family="monospace">lease expired → reclaimed by anyone</text>
+      <text x="212" y="48" font-size="7.4" text-anchor="middle" fill="#8b959e">this is the whole of crash recovery</text>
+
+      <text x="640" y="146" font-size="7.6" fill="#8b959e" text-anchor="middle">no scheduler</text>
+      <text x="640" y="158" font-size="7.6" fill="#8b959e" text-anchor="middle">no liveness service</text>
+      <text x="640" y="170" font-size="7.6" fill="#8b959e" text-anchor="middle">no leader election</text>
+    </svg>
+    <figcaption>Fig 2 — Job lifecycle. Two timestamps replace an entire scheduler: <code>available_at</code> for backoff, <code>lease_expires_at</code> for recovery.</figcaption>
+  </figure>
+
+  <figure>
+    <svg viewBox="0 0 740 244" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, Arial, sans-serif">
+      <defs>
+        <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#5d6873"/>
+        </marker>
+      </defs>
+
+      <rect x="16" y="96" width="104" height="44" rx="4" fill="#f4f6f8" stroke="#dde3e8"/>
+      <text x="68" y="114" font-size="9.6" text-anchor="middle" font-weight="600" fill="#14181d">need a</text>
+      <text x="68" y="127" font-size="9.6" text-anchor="middle" font-weight="600" fill="#14181d">transcript</text>
+      <line x1="120" y1="118" x2="152" y2="118" stroke="#5d6873" stroke-width="1.4" marker-end="url(#a3)"/>
+
+      <!-- step 1 -->
+      <path d="M214,80 L268,118 L214,156 L160,118 Z" fill="#e8f2f0" stroke="#0f6e64" stroke-width="1.3"/>
+      <text x="214" y="114" font-size="8.4" text-anchor="middle" fill="#0f6e64" font-weight="700">native</text>
+      <text x="214" y="126" font-size="8.4" text-anchor="middle" fill="#0f6e64" font-weight="700">captions?</text>
+      <text x="214" y="172" font-size="7.6" text-anchor="middle" fill="#2c6b49" font-family="monospace">$0.00</text>
+
+      <line x1="268" y1="118" x2="306" y2="118" stroke="#5d6873" stroke-width="1.4" marker-end="url(#a3)"/>
+      <text x="287" y="112" font-size="7.4" text-anchor="middle" fill="#9b3430">no</text>
+
+      <!-- step 2 -->
+      <path d="M368,80 L422,118 L368,156 L314,118 Z" fill="#e8f2f0" stroke="#0f6e64" stroke-width="1.3"/>
+      <text x="368" y="114" font-size="8.4" text-anchor="middle" fill="#0f6e64" font-weight="700">RSS</text>
+      <text x="368" y="126" font-size="8.4" text-anchor="middle" fill="#0f6e64" font-weight="700">transcript?</text>
+      <text x="368" y="172" font-size="7.6" text-anchor="middle" fill="#2c6b49" font-family="monospace">$0.00</text>
+
+      <line x1="422" y1="118" x2="460" y2="118" stroke="#5d6873" stroke-width="1.4" marker-end="url(#a3)"/>
+      <text x="441" y="112" font-size="7.4" text-anchor="middle" fill="#9b3430">no</text>
+
+      <!-- step 3 -->
+      <rect x="462" y="94" width="128" height="48" rx="4" fill="#fdf5e6" stroke="#8a5a10" stroke-width="1.3"/>
+      <text x="526" y="112" font-size="9.4" text-anchor="middle" font-weight="700" fill="#8a5a10">paid ASR</text>
+      <text x="526" y="126" font-size="7.6" text-anchor="middle" fill="#2b3238" font-family="monospace">$0.0043 / min</text>
+      <text x="526" y="136" font-size="7" text-anchor="middle" fill="#8b959e">last resort only</text>
+
+      <!-- yes exits -->
+      <path d="M214,80 L214,44 L640,44 L640,100" stroke="#2c6b49" stroke-width="1.4" fill="none" marker-end="url(#a3)"/>
+      <text x="240" y="38" font-size="7.4" fill="#2c6b49">yes</text>
+      <path d="M368,80 L368,62 L636,62" stroke="#2c6b49" stroke-width="1.2" fill="none"/>
+      <text x="394" y="58" font-size="7.4" fill="#2c6b49">yes</text>
+      <line x1="590" y1="118" x2="616" y2="118" stroke="#5d6873" stroke-width="1.4" marker-end="url(#a3)"/>
+
+      <rect x="600" y="100" width="126" height="44" rx="4" fill="#fff" stroke="#14181d" stroke-width="1.4"/>
+      <text x="663" y="118" font-size="9.6" text-anchor="middle" font-weight="700" fill="#14181d">transcript</text>
+      <text x="663" y="131" font-size="7.4" text-anchor="middle" fill="#8b959e">cached in R2 forever</text>
+
+      <text x="370" y="196" font-size="8.6" fill="#2b3238" text-anchor="middle">Every step records what it cost as an OpenTelemetry span attribute.</text>
+      <text x="370" y="210" font-size="8.6" fill="#2b3238" text-anchor="middle">The trace therefore answers "why was this item expensive?" without a separate billing system.</text>
+      <text x="370" y="228" font-size="8.2" fill="#0f6e64" text-anchor="middle" font-family="monospace">content-addressed: 10 users saving one video pay for it once, ever</text>
+    </svg>
+    <figcaption>Fig 3 — The cost cascade. A runtime choice between a free path and a paid one is what makes cost an engineering concern rather than a billing surprise.</figcaption>
+  </figure>
+</section>
+
+<!-- ══════════ TECH ══════════ -->
+<section>
+  <h2><span class="num">06</span>Every technology, and why</h2>
+  <p class="lede">Each row is a decision you should be able to defend in an interview, including its downside.</p>
+
+  <table>
+    <thead><tr><th style="width:19%">Choice</th><th style="width:30%">Why this one</th><th>The honest downside</th></tr></thead>
+    <tbody>
+      <tr><td><strong>TypeScript on Node 22</strong></td>
+        <td>Your strongest language, so the novelty budget goes on queueing and observability rather than on syntax. Node 22 runs <code>.ts</code> natively, so there is no build step, no bundler, and the repo stays readable.</td>
+        <td>A polyglot CV would be more impressive to some. Not worth the cost here — learning Go and distributed queues simultaneously would mean learning neither.</td></tr>
+
+      <tr><td><strong>Postgres on Neon</strong></td>
+        <td>Free, hosted, nothing installed locally. Crucially it has <strong>partial unique indexes</strong>, which lets the in-flight coalescing guarantee live in the database instead of in application code.</td>
+        <td>Using a relational database as a message broker does not scale to millions of jobs. Correct, and you should say so: at this scale it is the right call, and knowing where it breaks is part of the answer.</td></tr>
+
+      <tr><td><strong>Cloudflare Workers</strong></td>
+        <td>The only genuinely always-on free tier. 100k requests/day and it never cold-starts, so a recruiter clicking the link gets an instant response.</td>
+        <td>10 ms CPU. Severe, and it dictates the architecture — but the resulting front-door/back-room split is a pattern worth having built.</td></tr>
+
+      <tr><td><strong>Cloud Run</strong></td>
+        <td>Long-running, CPU-heavy work that scales to zero when idle. You already know it from the job pipeline, so it is deliberately the boring part.</td>
+        <td>Cold starts on the worker path. Irrelevant here — jobs are already asynchronous, so a few seconds of start-up is invisible.</td></tr>
+
+      <tr><td><strong>Cloudflare R2</strong></td>
+        <td>Object storage with <strong>no egress fees</strong>, which matters when serving cached audio and transcripts.</td>
+        <td>Another vendor in the stack. Mitigated by touching it through a small interface.</td></tr>
+
+      <tr><td><strong>OpenTelemetry → Grafana Cloud</strong></td>
+        <td>The verified 2026 vendor-neutral standard (CNCF graduated May 2026). Genuinely new to you, and tracing <em>across</em> two runtimes is the interesting part. Attaching money to spans is rare and interviewers find it memorable.</td>
+        <td>Instrumentation is fiddly and easy to do badly — over-sample and it is noise, under-sample and it is useless.</td></tr>
+
+      <tr><td><strong>Claude Haiku</strong></td>
+        <td>Cheapest capable model, $1/M input and $5/M output. Extraction is a structured-output task, not a reasoning marathon.</td>
+        <td>Weaker than Sonnet on messy transcripts. The eval suite in phase 7–8 is exactly how you find out whether that matters, rather than guessing.</td></tr>
+
+      <tr><td><strong>Deepgram (ASR fallback)</strong></td>
+        <td>$0.0043/min batch. Only reached when both free transcript paths fail, so it is a small fraction of items.</td>
+        <td>The only line item that scales with usage. The cascade exists to keep it rare.</td></tr>
+
+      <tr><td><strong>Telegram bot</strong></td>
+        <td>The lowest-friction way for real people to send you links. No app, no signup, works on everyone's phone.</td>
+        <td>Not a portfolio-grade UI. Acceptable — real usage matters more than a landing page.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ══════════ REJECTED ══════════ -->
+<section>
+  <h2><span class="num">07</span>What was rejected, and why</h2>
+  <p class="lede">Knowing why you did <em>not</em> pick something is usually the better interview answer.</p>
+
+  <table>
+    <thead><tr><th style="width:22%">Rejected</th><th>Reason</th></tr></thead>
+    <tbody>
+      <tr><td><strong>MySQL</strong></td><td>It <em>does</em> have <code>FOR UPDATE SKIP LOCKED</code> (8.0.1+), so that was never the differentiator — a common misconception worth correcting. It lacks <strong>partial indexes</strong>, which would push the dedup guarantee into application code, where guarantees rot.</td></tr>
+      <tr><td><strong>MongoDB</strong></td><td>You already run it, and it is more capable here than it is usually given credit for: <code>findOneAndUpdate</code> is a genuine atomic claim, and partial unique indexes exist via <code>partialFilterExpression</code>. The awkward part is <em>fair</em> queueing — "pick the job whose owner has fewest in flight" becomes an aggregation plus an atomic update, fiddly and racy, versus one SQL statement.</td></tr>
+      <tr><td><strong>Postgres installed locally</strong></td><td>Proposed once and rightly rejected. Nothing needs to go on your Mac; Neon gives real concurrent connections for free. <strong>Do not revisit this.</strong></td></tr>
+      <tr><td><strong>Supabase</strong></td><td>The free tier <strong>pauses after roughly 7 days</strong> of inactivity and recovery is a manual dashboard restore — so a recruiter clicking three weeks later finds a dead demo. Disqualifying for this specific requirement.</td></tr>
+      <tr><td><strong>Confluent Cloud / managed Kafka</strong></td><td>Free credit expires after 30 days, then the organisation is suspended and data becomes inaccessible. Disqualified outright.</td></tr>
+      <tr><td><strong>SQS / Redis / BullMQ</strong></td><td>They would work, and they would also do the learning for you. The mechanisms they hide are the entire point of the project.</td></tr>
+      <tr><td><strong>Three earlier project ideas</strong></td><td>A silent-failure cron monitor, a webhook delivery service, and reconciliation-as-a-service. All rejected by you for the same two reasons: too close to the day job, and not interesting enough to sustain 12 weeks of evenings. That judgement was correct — interest is the resource most likely to run out.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box crit">
+    <span class="label">Nineteen claims were refuted — do not use them to justify anything</span>
+    <p>An adversarial research pass killed nineteen popular career claims, including: Kubernetes as near-mandatory (the "18.6% of postings" figure), salary premiums for observability, Rust or dbt, "LLM skills appear in only 5% of postings", Go out-earning other languages, specific EU/NL stack-demand percentages, and the widely repeated idea that <em>recruiters now dismiss AI-assisted portfolios</em>.</p>
+    <p>None survived verification. They circulate confidently in career content. If you find yourself justifying a decision with one of them, the decision needs a different reason.</p>
+  </div>
+</section>
+
+<!-- ══════════ FEATURES ══════════ -->
+<section>
+  <h2><span class="num">08</span>The five engineering features</h2>
+  <p class="lede">These are the reason the project is not a CRUD app. Each is a direct answer to an interview question.</p>
+
+  <table>
+    <thead><tr><th style="width:20%">Feature</th><th style="width:40%">What it actually does</th><th>The question it answers</th></tr></thead>
+    <tbody>
+      <tr><td><strong>1 · Cost cascade</strong></td>
+        <td>Native captions (free) → RSS transcript (free) → paid ASR (last resort). A genuine runtime choice between a free and a paid path, with the cost recorded on the span.</td>
+        <td>"How do you keep an AI feature from becoming a runaway bill?"</td></tr>
+      <tr><td><strong>2 · Content-addressed dedup + singleflight</strong></td>
+        <td>Ten users saving one video produce one asset, one job, ten saves. A second request while a job is in flight <em>attaches as a waiter</em> rather than starting duplicate work — enforced by a partial unique index, not by check-then-insert.</td>
+        <td>"Two identical requests arrive at the same instant. What happens?"</td></tr>
+      <tr><td><strong>3 · Resumability</strong></td>
+        <td><code>chunks</code> is a table, not a column. A worker that dies at chunk 7 of 12 resumes at 7 and does not re-spend on 1–6. Idempotency keys throughout.</td>
+        <td>"Your worker dies mid-job. Do you pay twice?"</td></tr>
+      <tr><td><strong>4 · Fair queueing</strong></td>
+        <td>Leases, visibility timeouts, backpressure, and per-user fairness. One person pasting 200 links cannot starve everyone else — expressed as <code>ORDER BY in_flight ASC</code>, with no rate limiter or quota table.</td>
+        <td>"One tenant floods the queue. How do the others still get served?"</td></tr>
+      <tr><td><strong>5 · Evals</strong></td>
+        <td>A golden set, schema-validated structured output, prompt-version regression runs, per-field confidence, and user corrections fed back as new eval cases.</td>
+        <td><strong>"How do you know the extraction is right?"</strong> — the one most people cannot answer.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>The query you will be asked to walk through</h3>
+  <pre>WITH in_flight AS (
+  SELECT fairness_user_id AS uid, COUNT(*) AS n FROM jobs
+   WHERE state = 'leased' AND lease_expires_at &gt; now() GROUP BY 1)
+SELECT j.* FROM jobs j LEFT JOIN in_flight f ON f.uid = j.fairness_user_id
+ WHERE j.state = 'queued' AND j.available_at &lt;= now()
+ ORDER BY COALESCE(f.n, 0) ASC, j.created_at ASC
+   FOR UPDATE OF j SKIP LOCKED LIMIT 1;</pre>
+
+  <div class="box warn">
+    <span class="label">Two details that will be probed</span>
+    <p><code>FOR UPDATE OF j</code>, not a bare <code>FOR UPDATE</code> — Postgres refuses to lock "the nullable side of an outer join", and <code>in_flight</code> is LEFT JOINed. A bare <code>FOR UPDATE</code> fails at runtime with exactly that message.</p>
+    <p><code>SKIP LOCKED</code> — without it, ten workers serialise behind a single row lock and throughput collapses to one job at a time regardless of how many workers you run.</p>
+  </div>
+</section>
+
+<!-- ══════════ PHASES ══════════ -->
+<section>
+  <h2><span class="num">09</span>Phases 1–10, in depth</h2>
+  <p class="lede">Each phase lists what you build, what you must understand <em>before</em> starting, and the gate you must pass to move on.</p>
+
+  <div class="box">
+    <span class="label">The rule that makes this work</span>
+    <p><strong>Week 1 uses no AI at all.</strong> The worker sleeps and randomly throws. If you add transcription before the queue is provably correct, you will be debugging prompt quality and lease expiry at the same time and you will not know which is which. Earn the queue first.</p>
+  </div>
+
+  <!-- PHASE 1 -->
+  <div class="ph"><span class="wk">WEEK 1–2</span><h3>The queue, and breaking it on purpose</h3></div>
+  <p>Schema, lease mechanics, and a chaos harness. The worker is <em>deliberately terrible</em>: it throws, it hangs past its lease, and it hard-exits mid-job. A separate test spawns real processes and <code>kill -9</code>s them while they hold leases.</p>
+  <ul class="tight">
+    <li><code>enqueue</code> with in-flight coalescing via the partial unique index</li>
+    <li><code>claim</code> — the fairness query, <code>SKIP LOCKED</code>, a fresh lease token per attempt</li>
+    <li><code>heartbeat</code>, <code>complete</code> (fenced on lease ownership), <code>fail</code> (backoff + jitter), <code>reclaimExpired</code></li>
+    <li>A harness asserting: every job terminates; exactly one effect per job; zombie completions are rejected; poison dies instead of looping; the flooder does not starve anyone</li>
+  </ul>
+
+  <div class="prereq">
+    <h5>Understand before you start</h5>
+    <ol>
+      <li><b>At-least-once versus exactly-once.</b> Exactly-once delivery does not exist. What you can have is at-least-once <em>delivery</em> with an effectively-once <em>effect</em>, which is why <code>side_effects</code> uses <code>job_id</code> as its primary key. Get this distinction wrong and every later design decision is confused.</li>
+      <li><b>Why a lease is not a lock.</b> A lock is held by a live connection and vanishes when it drops. A lease is a row with an expiry timestamp and survives the worker's death — which is precisely what makes recovery possible without any liveness detection.</li>
+      <li><b>Fencing tokens.</b> Lease expiry alone does not stop a stalled worker from completing, because its clock is not the database's clock. Read Kleppmann on fencing tokens; this is the subtlest idea in week 1 and the most likely to be probed.</li>
+      <li><b>What <code>SKIP LOCKED</code> actually does</b> — and what happens without it. Run the harness both ways and watch throughput collapse.</li>
+      <li><b>Exponential backoff <em>with jitter</em>.</b> Without jitter, a batch that failed together retries together forever, in lockstep, hammering whatever is already broken.</li>
+      <li><b>Transaction isolation, enough of it.</b> You need to know why the claim's <code>SELECT</code> and <code>UPDATE</code> must be in one transaction. You do not need to memorise all four isolation levels.</li>
+    </ol>
+    <p class="gate">GATE — you can explain, without notes, why a worker whose lease expired must not be allowed to complete its job.</p>
+  </div>
+  <p class="out"><b>Outcome</b>A queue you trust because you broke it. This code is already written and typechecks; it has not yet been run against a live database.</p>
+
+  <!-- PHASE 2 -->
+  <div class="ph"><span class="wk">WEEK 3–4</span><h3>The real pipeline</h3></div>
+  <p>Replace the fake worker with real stages: resolve the URL, run the cost cascade, transcribe in chunks with checkpoints, extract structured data with Claude.</p>
+  <ul class="tight">
+    <li>Provider abstraction so the ASR vendor is swappable — you will want to compare at least two</li>
+    <li>Chunked transcription writing each chunk into <code>chunks</code> as it completes</li>
+    <li>Structured extraction with a schema, validated on the way out, not trusted</li>
+  </ul>
+  <div class="prereq">
+    <h5>Understand before you start</h5>
+    <ol>
+      <li><b>Streaming versus buffering large files.</b> A two-hour podcast will not fit in memory on a small Cloud Run instance. Learn Node streams properly before this phase, not during it.</li>
+      <li><b>Idempotency keys.</b> Every external call that costs money needs one, or a retry becomes a double charge.</li>
+      <li><b>Structured output from an LLM.</b> Schema-constrained generation, and what to do when the model returns something almost-valid. Assume the JSON will be malformed sometimes and plan the recovery path.</li>
+      <li><b>Timeouts and cancellation.</b> <code>AbortSignal</code> throughout. An un-cancellable request is a lease you cannot honour.</li>
+      <li><b>The difference between a retryable and a terminal error.</b> Retrying a 400 forever is how a queue quietly stops making progress.</li>
+    </ol>
+    <p class="gate">GATE — one real YouTube link goes in and correct structured data comes out, and killing the worker halfway does not re-spend on completed chunks.</p>
+  </div>
+  <p class="out"><b>Outcome</b>End-to-end on one real link, resumable.</p>
+
+  <!-- PHASE 3 -->
+  <div class="ph"><span class="wk">WEEK 5</span><h3>Observability, with money attached</h3></div>
+  <p>OpenTelemetry across the edge, the queue and every worker stage, exported to Grafana Cloud. Cost recorded as a span attribute.</p>
+  <div class="prereq">
+    <h5>Understand before you start</h5>
+    <ol>
+      <li><b>Traces, spans, and context propagation.</b> The hard part is carrying trace context <em>across a runtime boundary</em> — from a Cloudflare Worker, through a database row, into a Cloud Run process. That is not a tutorial case and it is the thing worth having done.</li>
+      <li><b>Spans versus metrics versus logs</b>, and when each is the right instrument. Most people reach for logs for everything.</li>
+      <li><b>Sampling.</b> Trace everything and you will exceed the free tier and learn nothing. Head versus tail sampling, and why you always keep the errors.</li>
+      <li><b>Cardinality.</b> Putting a user ID in a metric label is how you accidentally create a million time series and get throttled.</li>
+    </ol>
+    <p class="gate">GATE — you can open one trace and say where the time went and where the money went, without consulting the code.</p>
+  </div>
+  <p class="out"><b>Outcome</b>A trace that shows why one item cost more than another. Rare, and memorable to an interviewer.</p>
+
+  <!-- PHASE 4 -->
+  <div class="ph"><span class="wk">WEEK 6</span><h3>Real users, real contention</h3></div>
+  <p>Telegram bot, dedup and singleflight under genuine concurrency, fairness verified under load. Give the link to friends.</p>
+  <div class="prereq">
+    <h5>Understand before you start</h5>
+    <ol>
+      <li><b>Webhook security.</b> Verify Telegram's signature. An unauthenticated webhook is an open door to your queue.</li>
+      <li><b>Backpressure.</b> What the system should do when it is already saturated — the correct answer is rarely "accept it anyway".</li>
+      <li><b>The thundering herd.</b> Ten simultaneous saves of the same trending video is the singleflight path's real test, and the only way to test it is concurrently.</li>
+      <li><b>Rate limits as a first-class concern</b>, both the ones you impose and the ones vendors impose on you.</li>
+    </ol>
+    <p class="gate">GATE — a friend pastes 50 links and your own single link still completes promptly.</p>
+  </div>
+  <p class="out"><b>Outcome</b>Something people actually use, which is a prerequisite for having real incidents to write about.</p>
+
+  <!-- PHASE 5 -->
+  <div class="ph"><span class="wk">WEEK 7–8</span><h3>Evals — proving the AI part is engineered</h3></div>
+  <p>A golden set of 30–50 items with known-correct extractions. Schema validation, per-field confidence, prompt-version regression runs, and user corrections captured as new eval cases.</p>
+  <div class="prereq">
+    <h5>Understand before you start</h5>
+    <ol>
+      <li><b>How to regression-test a non-deterministic system.</b> The same input may legitimately produce different output. You need tolerant assertions and aggregate pass rates, not string equality.</li>
+      <li><b>Precision and recall, applied to extraction.</b> Missing a recipe ingredient and inventing one are different failures with different costs.</li>
+      <li><b>Grounding and verification.</b> Cross-check every extracted claim against the source transcript. This is your reconciliation instinct, pointed at a probabilistic system — the distinctive part of the whole project.</li>
+      <li><b>Confidence calibration.</b> A model's self-reported confidence is not probability. Learn what it is and is not good for before relying on it to gate anything.</li>
+      <li><b>Prompt versioning.</b> Treat a prompt as deployed code: version it, and re-run the golden set before shipping a change.</li>
+    </ol>
+    <p class="gate">GATE — you change a prompt, run the suite, and can state what improved and what regressed, in numbers.</p>
+  </div>
+  <p class="out"><b>Outcome</b>A defensible answer to "how do you know it's right?", with data behind it.</p>
+
+  <!-- PHASE 6 -->
+  <div class="ph"><span class="wk">WEEK 9–10</span><h3>Ship it publicly and let it break</h3></div>
+  <p>Public URL, README, and — the actual deliverable — <strong>written incident reports</strong>. Something will fail: a vendor will change an API, a queue will back up, a cost will surprise you. Write each one up: what broke, how you noticed, what it cost, what you changed.</p>
+  <div class="box warn">
+    <span class="label">This phase is the point, not padding</span>
+    <p>Verified research finding: what makes a project <em>discussable</em> is lived incidents narrated with ownership, resolution and a named cost — "battles won with losses" — not a flawless happy path. A self-inflicted outage on a zero-traffic demo does not have that property, which is exactly why week 6 exists to get real users first.</p>
+  </div>
+  <div class="prereq">
+    <h5>Understand before you start</h5>
+    <ol>
+      <li><b>How to write an incident report</b> that is neither defensive nor self-flagellating. Timeline, impact, root cause, fix, prevention.</li>
+      <li><b>Alerting that is worth having.</b> An alert you routinely ignore is worse than none, because it teaches you to ignore alerts.</li>
+      <li><b>Secret hygiene and a public repo.</b> Scan the history before you publish, not after.</li>
+    </ol>
+    <p class="gate">GATE — three incidents written up. Each one is an interview answer you did not have before.</p>
+  </div>
+  <p class="out"><b>Outcome</b>The interview material. This is what the previous eight weeks were for.</p>
+</section>
+
+<!-- ══════════ COST ══════════ -->
+<section>
+  <h2><span class="num">10</span>Cost estimate</h2>
+  <p class="lede">Zero when idle. Under five dollars a month with real use. The architecture is what makes that true.</p>
+
+  <h3>Fixed infrastructure — free, verified</h3>
+  <table>
+    <thead><tr><th style="width:22%">Service</th><th style="width:30%">Free allowance</th><th>Behaviour when idle</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Neon Postgres</strong></td><td class="n">0.5 GB storage<br>100 CU-hours/month</td>
+          <td>Scales to zero after 5 min and <strong>cannot be disabled</strong> on free. Resumes automatically in <strong>under 500 ms</strong>. Critically, there is <em>no</em> manual restore — unlike Supabase, a link clicked weeks later still works.</td></tr>
+      <tr><td><strong>Cloudflare Workers</strong></td><td class="n">100,000 req/day</td><td>Never sleeps. No cold start. This is why it is the front door.</td></tr>
+      <tr><td><strong>Cloud Run</strong></td><td class="n">2M req/month<br>180k vCPU-s/month</td><td>Scales to zero. You pay nothing between jobs.</td></tr>
+      <tr><td><strong>Cloudflare R2</strong></td><td class="n">10 GB storage<br>no egress fees</td><td>Static cost only. Transcripts are small; audio is deleted after transcription.</td></tr>
+      <tr><td><strong>Grafana Cloud</strong></td><td class="n">free tier</td><td>Adequate with sampling. <em>Verify current limits when you sign up</em> — free-tier terms move.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Variable cost — the only real money</h3>
+  <table>
+    <thead><tr><th style="width:26%">Item</th><th style="width:22%">Unit price</th><th>Working</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Claude Haiku</strong><br><span style="color:var(--faint)">extraction</span></td>
+          <td class="n">$1 / M input<br>$5 / M output</td>
+          <td>A 30-minute transcript is roughly 7,000 input tokens; structured output roughly 800. About <strong>$0.011 per item</strong>.</td></tr>
+      <tr><td><strong>Deepgram Nova-3</strong><br><span style="color:var(--faint)">ASR fallback only</span></td>
+          <td class="n">$0.0043 / min<br>(batch)</td>
+          <td>A 20-minute item costs <strong>$0.086</strong> — but only when both free paths fail. Streaming is $0.0077/min; you want batch.</td></tr>
+    </tbody>
+  </table>
+
+  <h4>Worked monthly estimate — 100 items, 20% needing paid ASR</h4>
+  <pre>80 items · free transcript path                                  $0.00
+20 items · 20 min average · $0.0043/min                          $1.72
+100 items · Claude Haiku extraction · $0.011                     $1.10
+infrastructure (all free tiers)                                  $0.00
+                                                                ──────
+                                                          total  $2.82 / month</pre>
+
+  <div class="box">
+    <span class="label">Why the cascade is the cost story</span>
+    <p>Without it, all 100 items would hit paid ASR: 100 × 20 min × $0.0043 = <strong>$8.60</strong>, plus extraction — roughly <strong>3.5×</strong> the bill. And with content-addressed dedup, ten people saving the same video pay for it <em>once, ever</em>. That is a sentence with a number in it, which is what makes it an interview answer rather than an opinion.</p>
+  </div>
+
+  <div class="box warn">
+    <span class="label">Set a hard cap before the first paid call</span>
+    <p>You have already been bitten by this: the job pipeline's Anthropic account hit a zero balance mid-run, and because errors were caught per-stage it failed <em>silently</em> — jobs simply stopped being scored. Build the spend ledger and the daily cap in week 3, before the first Deepgram call, not after the first surprise.</p>
+  </div>
+</section>
+
+<!-- ══════════ TIMELINE ══════════ -->
+<section>
+  <h2><span class="num">11</span>Timeline and effort</h2>
+  <p class="lede">10 weeks of building at your real availability, and the honest range is 10–14.</p>
+
+  <table>
+    <thead><tr><th style="width:12%">Weeks</th><th style="width:30%">Phase</th><th style="width:16%">New to you</th><th>Risk of slipping</th></tr></thead>
+    <tbody>
+      <tr><td class="n">1–2</td><td>Queue + chaos harness</td><td class="n">high</td><td><strong>Low.</strong> Code is written already. Risk is understanding, not typing.</td></tr>
+      <tr><td class="n">3–4</td><td>Real pipeline</td><td class="n">medium</td><td><strong>Medium.</strong> Vendor APIs and large-file streaming always take longer than planned.</td></tr>
+      <tr><td class="n">5</td><td>OpenTelemetry</td><td class="n">very high</td><td><strong>High.</strong> Cross-runtime context propagation is the single most likely week to overrun. Budget two.</td></tr>
+      <tr><td class="n">6</td><td>Bot, dedup, fairness under load</td><td class="n">medium</td><td><strong>Low.</strong> Mostly exercising what already exists.</td></tr>
+      <tr><td class="n">7–8</td><td>Evals</td><td class="n">high</td><td><strong>Medium.</strong> Building the golden set is tedious manual work and easy to defer forever.</td></tr>
+      <tr><td class="n">9–10</td><td>Ship, break, write up</td><td class="n">low</td><td><strong>Depends on users.</strong> No traffic means no incidents means no material.</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>Your availability:</strong> 1–2 hours on weekdays plus weekends — call it 12–15 hours a week. At that rate the plan is 10 weeks of building if nothing slips, and <strong>realistically 12–14</strong>. Week 5 is the one to watch.</p>
+
+  <div class="box">
+    <span class="label">The ratio that makes this the right project</span>
+    <p>Roughly <strong>40% familiar</strong> — TypeScript, Node, SQL, Cloud Run, the Claude API, retry instincts — and <strong>60% new</strong>: leases, visibility timeouts, backpressure, per-tenant fairness, OpenTelemetry, evaluating non-deterministic output. Much more familiar and you learn nothing; much more new and you stall out in week 3. This ratio is why the earlier proposals were rejected and this one was not.</p>
+  </div>
+
+  <div class="box crit">
+    <span class="label">The single biggest risk is not technical</span>
+    <p>It is abandonment at 60%. A half-built project is worth less than no project, because the interview question becomes "why did you stop?" The mitigation is built into the plan: <strong>weeks 1–2 produce something demonstrable on their own</strong> — a queue with a chaos report is already a legitimate thing to talk about, even if you never finish the product. Every phase after that adds a complete layer rather than a partial one.</p>
+    <p>And the job search remains the priority. This project exists to serve it, not to replace it. If a week has to give, this one gives.</p>
+  </div>
+</section>
+
+<!-- ══════════ CLAIMS ══════════ -->
+<section>
+  <h2><span class="num">12</span>What you will be able to claim</h2>
+  <p class="lede">Stated as an interviewer would hear it, not as a feature list.</p>
+
+  <table>
+    <thead><tr><th style="width:34%">The claim</th><th>The evidence behind it</th></tr></thead>
+    <tbody>
+      <tr><td>"I built a job queue on Postgres with leases, backoff and per-tenant fairness."</td>
+          <td>One SQL statement you can whiteboard, and a chaos harness that proves the properties hold under <code>kill -9</code>.</td></tr>
+      <tr><td>"I made cost an engineering concern rather than a billing surprise."</td>
+          <td>A three-step cascade, cost recorded on spans, and a measured 3.5× difference against the naive path.</td></tr>
+      <tr><td>"I know the difference between at-least-once delivery and an effectively-once effect."</td>
+          <td>A <code>side_effects</code> table whose primary key makes double-processing raise rather than pass silently.</td></tr>
+      <tr><td>"I traced a request across two runtimes and attached money to the spans."</td>
+          <td>A Grafana trace from a Cloudflare Worker through a Postgres row into a Cloud Run worker.</td></tr>
+      <tr><td>"I regression-test a non-deterministic system."</td>
+          <td>A golden set, per-field confidence, and prompt-version runs with before-and-after numbers.</td></tr>
+      <tr><td>"Here is an outage I caused, how I found it, what it cost, and what I changed."</td>
+          <td>Three written incident reports from a system with real users.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box">
+    <span class="label">The one-sentence pitch, by audience</span>
+    <p><strong>Recruiter:</strong> "It turns the stuff you save and never watch into something you can actually search."</p>
+    <p><strong>Engineer:</strong> "It is a content-addressed job pipeline on Postgres — leases, fair scheduling, resumable chunked work — wrapped around an expensive non-deterministic operation, with an eval suite that tells me when the extraction is wrong."</p>
+    <p><strong>Hiring manager:</strong> "I had never built a real queue — everything I'd shipped was cron-driven. So I built one, broke it deliberately, and wrote up what I learned when it broke for real."</p>
+  </div>
+</section>
+
+<!-- ══════════ RISKS ══════════ -->
+<section>
+  <h2><span class="num">13</span>Risks and honest warnings</h2>
+
+  <table>
+    <thead><tr><th style="width:26%">Risk</th><th style="width:12%">Likelihood</th><th>What to do about it</th></tr></thead>
+    <tbody>
+      <tr><td>Abandoned at 60%</td><td><strong>High</strong></td><td>The real risk. Weeks 1–2 are self-contained on purpose, so there is always something finished to point at.</td></tr>
+      <tr><td>Week 5 (OpenTelemetry) overruns</td><td><strong>High</strong></td><td>Budget two weeks. Cross-runtime context propagation is genuinely hard and poorly documented for this combination.</td></tr>
+      <tr><td>No real users, so no incidents</td><td>Medium</td><td>Ship the Telegram bot to friends in week 6, not week 10. Without traffic, phase 9–10 has nothing to write about.</td></tr>
+      <tr><td>It drifts into a CRUD app</td><td>Medium</td><td>Re-read your own objection in section 01 whenever a week feels easy. If a week involves no queue, no cost decision and no verification, it is the wrong week.</td></tr>
+      <tr><td>A free tier changes underneath you</td><td>Medium</td><td>Already bitten Supabase and Confluent. Keep vendors behind small interfaces so swapping one is a day, not a rewrite.</td></tr>
+      <tr><td>Transcription bill surprises you</td><td>Low</td><td>Hard daily cap and a spend ledger in week 3, before the first paid call.</td></tr>
+      <tr><td>The job search stalls while you build</td><td><strong>High</strong></td><td>The one that actually matters. Applications sent is the metric; this project is support, not substitute. If a week must give, this one gives.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box crit">
+    <span class="label">Read this before week 1</span>
+    <p>You already have the week 1–2 code written and typechecking. That is <em>not</em> the same as understanding it, and the entire value of this project is that you can defend it under questioning. Either re-derive <code>queue.ts</code> yourself using the existing version as a reference, or sit with it until you can explain the fencing token, the partial index and <code>FOR UPDATE OF j</code> without looking.</p>
+    <p>"I have a queue I did not write" is the one outcome that fails the brief completely.</p>
+  </div>
+
+  <h3>Immediate next step</h3>
+  <p>One thing blocks everything: a <strong>Neon connection string</strong> in <code>/Users/Me/resurface/.env</code>. Create a free project at neon.tech, copy the pooled string — the one containing <code>-pooler</code> — and then:</p>
+  <pre>npm run migrate      # apply 001_init.sql
+npm run chaos        # 8 workers, deliberate failures, 5 assertions
+npm run kill-test    # real processes, kill -9 mid-job</pre>
+  <p>Expect the first run to fail something. That is the week working as designed.</p>
+</section>
+
+</body>
+</html>

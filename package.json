@@ -1,0 +1,22 @@
+{
+  "name": "resurface",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Turns the stuff you save and never watch into something you can actually search.",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "migrate": "node --env-file=.env src/migrate.ts",
+    "chaos": "node --env-file=.env src/chaos.ts",
+    "kill-test": "node --env-file=.env src/killtest.ts"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.10",
+    "typescript": "^5.9.3"
+  }
+}
