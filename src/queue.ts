@@ -257,6 +257,24 @@ export async function reclaimExpired(): Promise<number> {
   return rowCount ?? 0;
 }
 
+// Is there work that still needs doing, even if none of it is claimable now?
+//
+// This distinction is load-bearing and cost me the first chaos run. A worker
+// that treats "claim() returned null" as "the queue is drained" will exit while
+// a job sits in backoff — the first run left the poison job at attempt 4 of 5,
+// permanently unfinished, because every worker quit during its ~16s backoff
+// window. The same mistake in production is an autoscaler that scales to zero on
+// visible queue depth and never runs the retry.
+//
+// 'queued' covers jobs waiting on available_at; 'leased' covers jobs held by a
+// worker that may yet die and need reclaiming.
+export async function hasPendingWork(): Promise<boolean> {
+  const { rows } = await pool.query(
+    `select 1 from jobs where state in ('queued','leased') limit 1`
+  );
+  return rows.length > 0;
+}
+
 export async function stats() {
   const { rows } = await pool.query(
     `select state, count(*)::int as n from jobs group by state order by state`

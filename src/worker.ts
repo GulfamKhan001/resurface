@@ -1,4 +1,4 @@
-import { claim, complete, fail, heartbeat, type Job } from "./queue.ts";
+import { claim, complete, fail, hasPendingWork, heartbeat, type Job } from "./queue.ts";
 
 // A deliberately terrible worker.
 //
@@ -59,18 +59,33 @@ export async function runWorker(opts: {
   workerId: string;
   chaos?: Chaos;
   leaseSeconds?: number;
-  stopAfterIdle?: number;   // consecutive empty claims before exiting
+  stopAfterIdle?: number;   // consecutive TRULY-empty polls before exiting
+  drainTimeoutMs?: number;  // hard ceiling on waiting for backoff to clear
   signal?: AbortSignal;
 }) {
   const chaos = opts.chaos ?? NO_CHAOS;
   const leaseSeconds = opts.leaseSeconds ?? 6;
   const stopAfterIdle = opts.stopAfterIdle ?? 8;
+  const drainTimeoutMs = opts.drainTimeoutMs ?? 120_000;
   let idle = 0;
-  const tally = { done: 0, retried: 0, dead: 0, lostLease: 0 };
+  const startedAt = Date.now();
+  const tally = { done: 0, retried: 0, dead: 0, lostLease: 0, waitedForBackoff: 0 };
 
   while (!opts.signal?.aborted && idle < stopAfterIdle) {
     const job = await claim(opts.workerId, leaseSeconds);
     if (!job) {
+      // Nothing claimable — but that is not the same as nothing left to do. If
+      // work is merely waiting on backoff (or held by a worker that might die),
+      // keep waiting instead of counting this as idle and exiting.
+      //
+      // Bounded by drainTimeoutMs on purpose: without a ceiling, a genuinely
+      // wedged job would keep every worker spinning forever, which is a worse
+      // failure than exiting early.
+      if (Date.now() - startedAt < drainTimeoutMs && (await hasPendingWork())) {
+        tally.waitedForBackoff++;
+        await sleep(400);
+        continue;
+      }
       idle++;
       await sleep(120);
       continue;

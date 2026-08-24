@@ -121,9 +121,16 @@ async function main() {
   stop.abort();
   await reclaimer;
 
+  // waitedForBackoff is reported because it proves the drain fix engaged: a run
+  // showing 0 here on a workload containing a poison job means the workers exited
+  // during a backoff window and the poison assertion below passed for the wrong
+  // reason (or, as on the first run, failed).
   const agg = tallies.reduce(
-    (a, t) => ({ done: a.done + t.done, retried: a.retried + t.retried, dead: a.dead + t.dead, lostLease: a.lostLease + t.lostLease }),
-    { done: 0, retried: 0, dead: 0, lostLease: 0 }
+    (a, t) => ({
+      done: a.done + t.done, retried: a.retried + t.retried, dead: a.dead + t.dead,
+      lostLease: a.lostLease + t.lostLease, waitedForBackoff: a.waitedForBackoff + t.waitedForBackoff,
+    }),
+    { done: 0, retried: 0, dead: 0, lostLease: 0, waitedForBackoff: 0 }
   );
   console.log(`workers finished in ${((Date.now() - started) / 1000).toFixed(1)}s`);
   console.log(`  ${JSON.stringify(agg)}`);
