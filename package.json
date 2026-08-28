@@ -15,7 +15,8 @@
     "ingest": "node --env-file=.env src/pipeline.ts",
     "verify-test": "node src/verifytest.ts",
     "trace-test": "node --env-file=.env src/tracetest.ts",
-    "eval": "node --env-file=.env src/evalrun.ts"
+    "eval": "node --env-file=.env src/evalrun.ts",
+    "bot": "node --env-file=.env src/botrun.ts"
   },
   "dependencies": {
     "pg": "^8.13.1"
