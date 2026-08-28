@@ -5,6 +5,7 @@ import { planChunks, pendingChunks, completeChunk, chunkResults, chunkProgress, 
 import { extractChunk, mergeItems, recordSpend, newSpend, BudgetExceeded, type Spend } from "./extract.ts";
 import { verifyAll } from "./verify.ts";
 import type { ExtractedItem } from "./schema.ts";
+import { startSpan, traced, formatTraceparent, parseTraceparent, flush, type SpanContext } from "./trace.ts";
 
 // The whole thing, end to end:
 //   resolve -> source (cost cascade) -> chunk -> extract (checkpointed) ->
@@ -30,10 +31,17 @@ export interface RunResult {
   schemaRejects: number;
   spend: Spend;
   trail: string[];
+  traceId?: string;
 }
 
-export async function ingest(url: string, handle = "me", opts: { budgetUsd?: number } = {}): Promise<RunResult> {
+export async function ingest(url: string, handle = "me", opts: { budgetUsd?: number; parent?: SpanContext | null } = {}): Promise<RunResult> {
+  // The root span stands in for what the edge worker would create on accepting
+  // the link. Passing opts.parent is how the real edge tier hands the trace over.
+  const root = startSpan("ingest", opts.parent ?? null, { "resurface.url": url });
+  const trace = root.ctx;
+
   const r = resolve(url);
+  root.set({ "asset.kind": r.kind, "asset.key": r.key });
 
   // ── user + asset + save. Content-addressed, so the second person to save this
   //    reuses the asset and never triggers a second extraction. ──
@@ -43,7 +51,13 @@ export async function ingest(url: string, handle = "me", opts: { budgetUsd?: num
   );
   const userId = u[0].id;
 
-  const src = await fetchSource(r);
+  const src = await traced("source.fetch", trace, { "asset.kind": r.kind }, async (span) => {
+    const out = await fetchSource(r);
+    // The tier IS the cost decision — putting it on the span is what makes
+    // "why was this item expensive?" answerable from a trace alone.
+    span.set({ "source.tier": out.tier, "source.chars": out.text?.length ?? 0 }).cost(out.costUsd);
+    return out;
+  });
 
   const { rows: a } = await pool.query<{ id: string }>(
     `insert into assets (source_kind, source_key, title, metadata_only, source_tier, cost_usd)
@@ -71,6 +85,11 @@ export async function ingest(url: string, handle = "me", opts: { budgetUsd?: num
   const jobId = j[0]?.id
     ?? (await pool.query<{ id: string }>(`select id from jobs where asset_id=$1 and kind='extract' order by created_at desc limit 1`, [assetId])).rows[0].id;
 
+  // Hand the trace across the queue boundary. There is no HTTP header here —
+  // the next stage may run minutes later in a different runtime — so the W3C
+  // traceparent travels on the row instead. See migration 005.
+  await pool.query(`update jobs set traceparent = $2 where id = $1`, [jobId, formatTraceparent(trace)]);
+
   const base: RunResult = {
     assetId, jobId, kind: r.kind, tier: src.tier,
     chars: src.text?.length ?? 0,
@@ -86,12 +105,19 @@ export async function ingest(url: string, handle = "me", opts: { budgetUsd?: num
   if (!src.text) {
     base.trail.push("no transcript available — asset saved as metadata only");
     await pool.query(`update jobs set state='done', updated_at=now() where id=$1`, [jobId]);
+    root.set({ "outcome": "metadata_only" }).end();
+    base.traceId = trace.traceId;
     return base;
   }
 
+  // Captured after the guard above. TypeScript's narrowing of src.text does not
+  // survive into the async closures below, and widening the signature to accept
+  // null would push the check down into verifyAll where it does not belong.
+  const sourceText: string = src.text;
+
   // ── chunk + extract, resuming anything already done ──
-  const total = await planChunks(jobId, src.text);
-  const todo = await pendingChunks(jobId, src.text);
+  const total = await planChunks(jobId, sourceText);
+  const todo = await pendingChunks(jobId, sourceText);
   base.trail.push(`${total} chunks planned, ${todo.length} outstanding`);
 
   const spend = newSpend();
@@ -99,7 +125,13 @@ export async function ingest(url: string, handle = "me", opts: { budgetUsd?: num
 
   for (const c of todo) {
     try {
-      const { items, rejected } = await extractChunk(c.text, spend);
+      const before = spend.usd;
+      const { items, rejected } = await traced("extract.chunk", trace, { "chunk.idx": c.idx, "chunk.chars": c.text.length }, async (span) => {
+        const out = await extractChunk(c.text, spend);
+        span.set({ "items.extracted": out.items.length, "items.rejected": out.rejected.length })
+            .cost(spend.usd - before);
+        return out;
+      });
       schemaRejects += rejected.length;
       for (const rej of rejected) {
         // Kept deliberately — these are the eval set. See migration 003.
@@ -130,7 +162,16 @@ export async function ingest(url: string, handle = "me", opts: { budgetUsd?: num
   base.extracted = items.length;
   base.duplicatesCollapsed = duplicatesCollapsed;
 
-  const report = verifyAll(items, src.text);
+  const report = await traced("verify.grounding", trace, { "items.in": items.length }, async (span) => {
+    const rep = verifyAll(items, sourceText);
+    span.set({
+      "grounding.exact": rep.counts.exact,
+      "grounding.fuzzy": rep.counts.fuzzy,
+      "grounding.discarded": rep.counts.not_found,
+      "grounding.hallucination_rate": rep.hallucinationRate,
+    });
+    return rep;
+  });
   base.kept = report.kept.length;
   base.discarded = report.discarded.length;
   base.hallucinationRate = report.hallucinationRate;
@@ -153,9 +194,19 @@ export async function ingest(url: string, handle = "me", opts: { budgetUsd?: num
         [assetId, it.kind, it.title, it.detail, it.quote, it.confidence, it.grounding, it.trust]
       );
     }
-    await c.query(`update jobs set state='done', updated_at=now() where id=$1`, [jobId]);
+    await c.query(`update jobs set state='done', cost_usd=$2, updated_at=now() where id=$1`, [jobId, spend.usd]);
   });
 
+  root.set({
+    "items.kept": base.kept,
+    "items.discarded": base.discarded,
+    "chunks.total": base.chunks.total,
+    "llm.calls": spend.calls,
+    "llm.in_tokens": spend.inTok,
+    "llm.out_tokens": spend.outTok,
+  }).cost(spend.usd);
+  root.end();
+  base.traceId = trace.traceId;
   return base;
 }
 
@@ -181,6 +232,12 @@ if (process.argv[1]?.endsWith("pipeline.ts")) {
         `select kind, title, trust, grounding from items where asset_id=$1 order by trust desc, kind limit 15`, [r.assetId]
       );
       for (const i of rows) console.log(`    ${String(i.trust).padStart(5)} ${i.grounding.padEnd(6)} ${i.kind.padEnd(8)} ${i.title.slice(0, 60)}`);
+      // Flush at the end of the run, not on a timer: a worker that scales to
+      // zero has no timer to fire, and losing the spans for the run that just
+      // finished is the usual way self-hosted tracing quietly stops working.
+      const f = await flush();
+      console.log(`\n  trace ${r.traceId}`);
+      console.log(`  spans: ${f.exported} ${f.ok ? (f.reason ? "(" + f.reason + ")" : "exported") : "FAILED: " + f.reason}`);
       await close();
     })
     .catch(async (e) => { console.error("ingest failed:", e); await close().catch(() => {}); process.exit(1); });

@@ -13,7 +13,8 @@
     "kill-test": "node --env-file=.env src/killtest.ts",
     "resume-test": "node --env-file=.env src/resumetest.ts",
     "ingest": "node --env-file=.env src/pipeline.ts",
-    "verify-test": "node src/verifytest.ts"
+    "verify-test": "node src/verifytest.ts",
+    "trace-test": "node --env-file=.env src/tracetest.ts"
   },
   "dependencies": {
     "pg": "^8.13.1"
