@@ -10,7 +10,8 @@
   "scripts": {
     "migrate": "node --env-file=.env src/migrate.ts",
     "chaos": "node --env-file=.env src/chaos.ts",
-    "kill-test": "node --env-file=.env src/killtest.ts"
+    "kill-test": "node --env-file=.env src/killtest.ts",
+    "resume-test": "node --env-file=.env src/resumetest.ts"
   },
   "dependencies": {
     "pg": "^8.13.1"
