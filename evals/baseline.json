@@ -1,0 +1,159 @@
+{
+  "promptVersion": "p2-2026-08-28",
+  "at": "2026-08-28T12:33:01.951Z",
+  "cases": [
+    {
+      "id": "recipe-plain",
+      "extracted": 1,
+      "grounded": 1,
+      "matched": 1,
+      "expected": 1,
+      "trapsHit": [],
+      "recall": 1,
+      "precisionProxy": 1,
+      "items": [
+        {
+          "kind": "recipe",
+          "title": "Simple Carbonara",
+          "trust": 0.98
+        }
+      ]
+    },
+    {
+      "id": "book-vs-mention",
+      "extracted": 1,
+      "grounded": 1,
+      "matched": 1,
+      "expected": 1,
+      "trapsHit": [],
+      "recall": 1,
+      "precisionProxy": 1,
+      "items": [
+        {
+          "kind": "book",
+          "title": "Designing Data-Intensive Applications",
+          "trust": 0.98
+        }
+      ]
+    },
+    {
+      "id": "negation",
+      "extracted": 1,
+      "grounded": 1,
+      "matched": 1,
+      "expected": 1,
+      "trapsHit": [
+        "kubernetes"
+      ],
+      "recall": 1,
+      "precisionProxy": 0,
+      "items": [
+        {
+          "kind": "tool",
+          "title": "systemd units on two VMs",
+          "trust": 0.95
+        }
+      ]
+    },
+    {
+      "id": "hypothetical",
+      "extracted": 1,
+      "grounded": 1,
+      "matched": 1,
+      "expected": 1,
+      "trapsHit": [],
+      "recall": 1,
+      "precisionProxy": 1,
+      "items": [
+        {
+          "kind": "place",
+          "title": "Malvern Hills",
+          "trust": 0.98
+        }
+      ]
+    },
+    {
+      "id": "empty",
+      "extracted": 0,
+      "grounded": 0,
+      "matched": 0,
+      "expected": 0,
+      "trapsHit": [],
+      "recall": 1,
+      "precisionProxy": 1,
+      "items": []
+    },
+    {
+      "id": "multiple-kinds",
+      "extracted": 3,
+      "grounded": 3,
+      "matched": 2,
+      "expected": 2,
+      "trapsHit": [],
+      "recall": 1,
+      "precisionProxy": 1,
+      "items": [
+        {
+          "kind": "tool",
+          "title": "Tailscale",
+          "trust": 0.98
+        },
+        {
+          "kind": "recipe",
+          "title": "Ottolenghi roast aubergine with buttermilk sauce",
+          "trust": 0.96
+        },
+        {
+          "kind": "idea",
+          "title": "Naming problems as root cause of tooling issues",
+          "trust": 0.93
+        }
+      ]
+    },
+    {
+      "id": "attribution",
+      "extracted": 1,
+      "grounded": 1,
+      "matched": 1,
+      "expected": 1,
+      "trapsHit": [],
+      "recall": 1,
+      "precisionProxy": 1,
+      "items": [
+        {
+          "kind": "tool",
+          "title": "Kinesis Advantage keyboard",
+          "trust": 0.98
+        }
+      ]
+    },
+    {
+      "id": "invented-detail-trap",
+      "extracted": 0,
+      "grounded": 0,
+      "matched": 0,
+      "expected": 0,
+      "trapsHit": [],
+      "recall": 1,
+      "precisionProxy": 1,
+      "items": []
+    }
+  ],
+  "totals": {
+    "expected": 7,
+    "matched": 7,
+    "recall": 1,
+    "traps": 9,
+    "trapsHit": 1,
+    "trapAvoidance": 0.889,
+    "extracted": 8,
+    "grounded": 8,
+    "hallucinationRate": 0,
+    "usd": 0.012906,
+    "calls": 12
+  },
+  "stability": {
+    "casesRun": 4,
+    "agreement": 1
+  }
+}

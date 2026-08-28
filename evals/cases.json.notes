@@ -1,0 +1,14 @@
+KNOWN LIMITATION, measured 2026-08-28 across three runs of p2:
+
+  the `negation` case fails consistently. The passage says Kubernetes "was the
+  wrong call ... we ripped it out", and the extractor still returns it as a tool.
+  Recall is unaffected (systemd is found) but precision suffers.
+
+  p2's explicit "being mentioned is not being recommended" rule fixed the
+  `hypothetical` case (Kumano Kodo, 3/3 runs) and did NOT fix this one. That is
+  worth knowing rather than hiding: prompt instructions moved one failure and not
+  the other, which is the argument for a deterministic check rather than a
+  firmer instruction — the same conclusion the job pipeline reached about
+  fabricated technologies.
+
+  Next attempt should probably not be a third prompt edit.

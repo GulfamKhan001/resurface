@@ -13,6 +13,14 @@ import { validateExtraction, parseJsonLoose, ITEM_KINDS, type ExtractedItem } fr
 // that owning it is cheaper than owning a dependency.
 
 const MODEL = "claude-haiku-4-5-20251001";
+
+// Bump on every prompt edit. Stored with each eval run so a score can be
+// attributed to a specific prompt, and matched against chunk.ts's
+// EXTRACTOR_VERSION so old checkpoints stop counting as done.
+//
+// Treating a prompt as untracked config is how a quality change becomes
+// unexplainable three weeks later.
+export const PROMPT_VERSION = "p2-2026-08-28";
 const PRICE_IN_PER_MTOK = 1.0;
 const PRICE_OUT_PER_MTOK = 5.0;
 
@@ -59,7 +67,19 @@ Rules that matter more than completeness:
   infer what the speaker probably meant, do not complete a partial list.
 - If the text contains nothing worth saving, return []. An empty array is a
   correct answer and is strongly preferred to a plausible invention.
-- Prefer 3 solid items over 12 speculative ones.`;
+- Prefer 3 solid items over 12 speculative ones.
+
+BEING MENTIONED IS NOT BEING RECOMMENDED. Extract a thing only if the speaker is
+actually endorsing, recommending or describing it as something that worked. Skip it
+when the text is:
+- rejecting it — "we tried X and it was the wrong call", "we ripped it out",
+  "I would not go back to X"
+- hypothetical — "if I ever had time I might do X", "one day I would like to X"
+- incidental — named in passing with nothing said about it, or used only as an
+  example of something unrelated
+A thing that appears in the text but fails this test must be left out. Missing it
+costs nothing; extracting it puts something the speaker rejected into a list of
+things they endorsed.`;
 
 export async function extractChunk(
   text: string,
