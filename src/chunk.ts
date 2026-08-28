@@ -1,5 +1,11 @@
 import { pool, tx } from "./db.ts";
 
+// Bump when the extraction prompt or the item schema changes. Existing
+// checkpoints written by an older version stop counting as done, because a
+// resumed job would otherwise mix output from two different extractors and
+// report success. See migration 004 for how this was found.
+export const EXTRACTOR_VERSION = "v1-items-2026-08-28";
+
 // Chunking and resumability.
 //
 // A Changelog episode page yields 76,000 characters. That is far too much for one
@@ -58,9 +64,9 @@ export async function planChunks(jobId: string, text: string): Promise<number> {
   await tx(async (c) => {
     for (let i = 0; i < parts.length; i++) {
       await c.query(
-        `insert into chunks (job_id, idx, state) values ($1, $2, 'pending')
+        `insert into chunks (job_id, idx, state, extractor_version) values ($1, $2, 'pending', $3)
          on conflict (job_id, idx) do nothing`,
-        [jobId, i]
+        [jobId, i, EXTRACTOR_VERSION]
       );
     }
   });
@@ -74,9 +80,11 @@ export interface PendingChunk { idx: number; text: string }
 // same boundaries, and storing 76KB twice would be for nothing.
 export async function pendingChunks(jobId: string, text: string): Promise<PendingChunk[]> {
   const parts = splitText(text);
+  // Done AND written by this extractor. A chunk completed by an older version is
+  // treated as outstanding, which is the entire point of the version column.
   const { rows } = await pool.query<{ idx: number }>(
-    `select idx from chunks where job_id = $1 and state = 'done'`,
-    [jobId]
+    `select idx from chunks where job_id = $1 and state = 'done' and extractor_version = $2`,
+    [jobId, EXTRACTOR_VERSION]
   );
   const done = new Set(rows.map((r) => r.idx));
   return parts.map((t, idx) => ({ idx, text: t })).filter((p) => !done.has(p.idx));
@@ -87,25 +95,26 @@ export async function pendingChunks(jobId: string, text: string): Promise<Pendin
 // which cannot happen if all twelve share a transaction.
 export async function completeChunk(jobId: string, idx: number, result: unknown): Promise<void> {
   await pool.query(
-    `update chunks set state = 'done', result = $3, updated_at = now()
+    `update chunks set state = 'done', result = $3, extractor_version = $4, updated_at = now()
       where job_id = $1 and idx = $2`,
-    [jobId, idx, JSON.stringify(result ?? null)]
+    [jobId, idx, JSON.stringify(result ?? null), EXTRACTOR_VERSION]
   );
 }
 
 export async function chunkProgress(jobId: string): Promise<{ total: number; done: number }> {
   const { rows } = await pool.query<{ total: string; done: string }>(
-    `select count(*) as total, count(*) filter (where state = 'done') as done
+    `select count(*) as total,
+            count(*) filter (where state = 'done' and extractor_version = $2) as done
        from chunks where job_id = $1`,
-    [jobId]
+    [jobId, EXTRACTOR_VERSION]
   );
   return { total: Number(rows[0]?.total ?? 0), done: Number(rows[0]?.done ?? 0) };
 }
 
 export async function chunkResults<T = unknown>(jobId: string): Promise<T[]> {
   const { rows } = await pool.query<{ result: T }>(
-    `select result from chunks where job_id = $1 and state = 'done' order by idx`,
-    [jobId]
+    `select result from chunks where job_id = $1 and state = 'done' and extractor_version = $2 order by idx`,
+    [jobId, EXTRACTOR_VERSION]
   );
   return rows.map((r) => r.result).filter((r) => r != null);
 }
