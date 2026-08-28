@@ -13,7 +13,7 @@ import type { Resolved } from "./resolve.ts";
 // successful-looking response containing nothing. The tiers below are the ones
 // that actually work, each with a measured hit rate rather than an assumed one.
 
-export type Tier = "rss_transcript" | "page_text" | "oembed_metadata" | "paid_asr" | "none";
+export type Tier = "rss_transcript" | "page_text" | "yt_description" | "oembed_metadata" | "paid_asr" | "none";
 
 export interface SourceResult {
   tier: Tier;
@@ -65,6 +65,46 @@ function titleOf(html: string): string | null {
   return t ? t[1].trim() : null;
 }
 
+// ─── Tier: the creator's own description ───
+//
+// This tier exists because the earlier conclusion was wrong. Captions being
+// blocked was tested and confirmed; whether the PAGE held anything else was not
+// checked, and "YouTube is metadata-only" got written down on the strength of one
+// failed path. It is not: shortDescription in the watch page carried 2,358
+// characters of real planning advice on the first Shorts link tried in anger.
+//
+// Not a transcript, and never presented as one. It is what the creator wrote
+// about their own video, which for recipe, gear-list and how-to content is
+// frequently where the actual substance lives.
+function youtubeDescription(html: string): string | null {
+  // JSON-escaped inside the page payload, so let JSON.parse do the unescaping —
+  // a manual unicode_escape mangles UTF-8 into mojibake ("don\u2019t" became
+  // "donâ€™t" when decoded by hand).
+  const m = html.match(/"shortDescription":"((?:[^"\\]|\\.)*)"/);
+  if (!m) return null;
+  let text: string;
+  try {
+    text = JSON.parse(`"${m[1]}"`) as string;
+  } catch {
+    return null;
+  }
+  // Strip the promotional furniture most channels append: subscribe pleas, long
+  // hashtag blocks, bare link lists. What is left is the part worth extracting.
+  const cleaned = text
+    .split("\n")
+    .filter((line) => {
+      const l = line.trim().toLowerCase();
+      if (!l) return false;
+      if (/^#\S+(\s+#\S+)*$/.test(l)) return false;                 // hashtag-only line
+      if (/^(subscribe|follow me|like and subscribe|my gear|shop|buy)\b/.test(l)) return false;
+      if (/^https?:\/\/\S+$/.test(l)) return false;                  // bare url
+      return true;
+    })
+    .join("\n")
+    .trim();
+  return cleaned.length >= 200 ? cleaned.slice(0, 20_000) : null;
+}
+
 // ─── Tier: free, official metadata for a link we cannot transcribe ───
 async function oembed(canonical: string): Promise<{ title: string | null; author: string | null }> {
   const r = await get(`https://www.youtube.com/oembed?url=${encodeURIComponent(canonical)}&format=json`, 12_000);
@@ -97,17 +137,31 @@ export function findTranscriptUrl(feedXml: string, episodeUrl: string): string |
 export async function fetchSource(r: Resolved, opts: { allowPaid?: boolean } = {}): Promise<SourceResult> {
   const trail: string[] = [];
 
-  // ── YouTube: metadata only, by design and stated up front ──
+  // ── YouTube: no transcript, but the description is often real content ──
   if (r.kind === "youtube") {
     trail.push("youtube: transcript endpoint returns empty for unauthenticated callers — not attempted");
     const meta = await oembed(r.canonical);
-    trail.push(meta.title ? "oembed: title and channel retrieved (free, official)" : "oembed: no data");
+    const title = meta.title ? `${meta.title}${meta.author ? ` — ${meta.author}` : ""}` : null;
+
+    const page = await get(r.canonical);
+    if (page) {
+      const desc = youtubeDescription(await page.text());
+      if (desc) {
+        trail.push(`yt_description: ${desc.length} chars of the creator's own description (free)`);
+        return { tier: "yt_description", text: desc, title, costUsd: 0, trail };
+      }
+      trail.push("yt_description: description too short or absent");
+    } else {
+      trail.push("yt_description: watch page unreachable");
+    }
+
+    trail.push(title ? "oembed: title and channel only" : "oembed: no data");
     return {
-      tier: meta.title ? "oembed_metadata" : "none",
-      // Deliberately not a fake transcript. A title is not content, and storing
+      // Deliberately not a fake transcript. A title is not content, and putting
       // it in the text field would let the extractor treat it as one.
+      tier: title ? "oembed_metadata" : "none",
       text: null,
-      title: meta.title ? `${meta.title}${meta.author ? ` — ${meta.author}` : ""}` : null,
+      title,
       costUsd: 0,
       trail,
     };

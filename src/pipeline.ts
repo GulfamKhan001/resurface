@@ -59,14 +59,24 @@ export async function ingest(url: string, handle = "me", opts: { budgetUsd?: num
     return out;
   });
 
+  // metadata_only records what ACTUALLY happened, not what the resolver predicted
+  // would happen. It used to be set from r.metadataOnly — the resolver's guess
+  // that a YouTube link is unreadable — which was true until the yt_description
+  // tier started returning real text. A row claiming "metadata only" next to 1,740
+  // characters of content is worse than a missing column: every later query that
+  // filters on it silently excludes readable assets.
+  const metadataOnly = !src.text;
   const { rows: a } = await pool.query<{ id: string }>(
     `insert into assets (source_kind, source_key, title, metadata_only, source_tier, cost_usd)
      values ($1,$2,$3,$4,$5,$6)
      on conflict (source_kind, source_key) do update set
        title = coalesce(excluded.title, assets.title),
-       source_tier = excluded.source_tier
+       source_tier = excluded.source_tier,
+       -- must be re-stated on conflict too, or an asset first seen under a weaker
+       -- tier keeps its stale flag forever once a better tier starts working
+       metadata_only = excluded.metadata_only
      returning id`,
-    [r.kind, r.key, src.title, !!r.metadataOnly, src.tier, src.costUsd]
+    [r.kind, r.key, src.title, metadataOnly, src.tier, src.costUsd]
   );
   const assetId = a[0].id;
 

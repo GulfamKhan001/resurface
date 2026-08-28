@@ -28,14 +28,16 @@ export interface TelegramUpdate {
   };
 }
 
-async function api(method: string, body: unknown): Promise<unknown> {
+const LONG_POLL_SECONDS = 25;
+
+async function api(method: string, body: unknown, timeoutMs = 20_000): Promise<unknown> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) throw new Error("TELEGRAM_BOT_TOKEN is not set");
   const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(20_000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const json = (await res.json()) as { ok: boolean; description?: string; result?: unknown };
   if (!json.ok) throw new Error(`Telegram ${method}: ${json.description}`);
@@ -92,9 +94,17 @@ async function chargeUser(id: number, usd: number): Promise<void> {
 const esc = (s: string) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 function formatResult(r: Awaited<ReturnType<typeof ingest>>, itemLines: string[]): string {
-  const head = r.tier === "oembed_metadata"
-    ? `Saved, but <b>no transcript available</b>.\nYouTube blocks transcript access for unauthenticated callers, so this is findable by title only.`
-    : `<b>${r.kept}</b> item${r.kept === 1 ? "" : "s"} from ${r.chars.toLocaleString()} characters`;
+  // Name the source honestly. A YouTube description is not a transcript, and
+  // presenting items drawn from one as if they came from the video would be the
+  // same lie as storing a title in the text field.
+  const head =
+    r.tier === "oembed_metadata"
+      ? `Saved, but <b>nothing readable found</b>.\nYouTube blocks transcripts for unauthenticated callers and this video's description was too thin to use, so it's findable by title only.`
+      : r.tier === "none"
+        ? `Saved, but <b>nothing readable found</b> — the page gave back no usable text (usually a login wall or a JavaScript-only page).`
+        : r.tier === "yt_description"
+          ? `<b>${r.kept}</b> item${r.kept === 1 ? "" : "s"} from the <b>video description</b> — not a transcript, so anything said out loud but not written down is missing.`
+          : `<b>${r.kept}</b> item${r.kept === 1 ? "" : "s"} from ${r.chars.toLocaleString()} characters`;
 
   const lines = [head];
   if (itemLines.length) lines.push("", ...itemLines);
@@ -114,9 +124,24 @@ export async function handleUpdate(u: TelegramUpdate): Promise<string> {
   // enough, so the same message genuinely arrives twice. update_id as a primary
   // key makes reprocessing impossible rather than unlikely — the same reasoning
   // as side_effects.job_id in the queue.
+  // Originally `on conflict do nothing`, which conflated CLAIMED with HANDLED.
+  // Killing the bot mid-ingest leaves a row with outcome NULL that could never be
+  // retried, so the update is permanently swallowed and the sender never gets a
+  // reply. NOT observed in the wild — the NULL row that prompted this was simply
+  // an ingest still in flight, and reading it as a crash was a misdiagnosis. The
+  // hole is real on inspection (nothing ever clears a NULL outcome) but unproven,
+  // and is recorded that way rather than dressed up as an incident.
+  //
+  // So: reclaim a row only if it never reached an outcome AND its claim has gone
+  // stale. Fresh NULL rows are a live handler in another process and stay
+  // untouched. This is the same lease reasoning as the job queue in this project
+  // (state='leased' + lease_expires_at) — the queue got it right and this did not.
   const claimed = await pool.query(
     `insert into bot_updates (update_id, telegram_id, text) values ($1,$2,$3)
-     on conflict (update_id) do nothing`,
+     on conflict (update_id) do update set handled_at = now()
+       where bot_updates.outcome is null
+         and bot_updates.handled_at < now() - interval '5 minutes'
+     returning update_id`,
     [u.update_id, msg.from.id, msg.text.slice(0, 500)]
   );
   if (claimed.rowCount === 0) return "ignored:duplicate";
@@ -228,7 +253,17 @@ export async function poll(): Promise<void> {
   let offset = 0;
   for (;;) {
     try {
-      const updates = (await api("getUpdates", { offset, timeout: 25, allowed_updates: ["message"] })) as TelegramUpdate[];
+      // The fetch timeout MUST exceed the long-poll timeout. It did not: the poll
+      // asked Telegram to hold the connection for 25s while the fetch aborted at
+      // 20s, so every idle cycle logged "operation was aborted due to timeout"
+      // and immediately reconnected. Messages still arrived, so it looked like
+      // noise rather than a bug — but it was hammering Telegram every 20s and
+      // would have been rate-limited eventually.
+      const updates = (await api(
+        "getUpdates",
+        { offset, timeout: LONG_POLL_SECONDS, allowed_updates: ["message"] },
+        (LONG_POLL_SECONDS + 10) * 1000
+      )) as TelegramUpdate[];
       for (const u of updates) {
         offset = Math.max(offset, u.update_id + 1);
         const outcome = await handleUpdate(u).catch((e) => `error:${(e as Error).message.slice(0, 60)}`);
