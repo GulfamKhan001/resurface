@@ -1,4 +1,5 @@
 import { pool } from "./db.ts";
+import { search } from "./search.ts";
 import { resolve } from "./resolve.ts";
 import { ingest } from "./pipeline.ts";
 import { startSpan, flush } from "./trace.ts";
@@ -176,6 +177,8 @@ export async function handleUpdate(u: TelegramUpdate): Promise<string> {
       "",
       "Send me a link — an article, a podcast episode, a YouTube video — and I'll pull out what's actually in it and make it searchable.",
       "",
+      "Then just type what you're looking for. No command needed.",
+      "",
       "Every item is checked against the source before it's kept, so anything I can't find a real quote for gets thrown away rather than shown to you.",
       "",
       "<code>/stats</code> — what today has cost",
@@ -199,10 +202,27 @@ export async function handleUpdate(u: TelegramUpdate): Promise<string> {
     return finish("stats");
   }
 
+  // Anything that is not a link is a search. Making the user learn a command to
+  // reach the feature the product is named for would be an odd thing to defend;
+  // "/find" still works for anyone who expects a command.
   const url = text.match(/https?:\/\/\S+/)?.[0];
   if (!url) {
-    await reply(msg.chat.id, "Send me a link and I'll have a go at it.");
-    return finish("ignored:no_url");
+    const q = text.replace(/^\/find\s*/i, "").trim();
+    if (!q) {
+      await reply(msg.chat.id, "Send me a link to save, or some words to search for.");
+      return finish("ignored:empty");
+    }
+    const hits = await search(q, 8);
+    if (!hits.length) {
+      await reply(msg.chat.id, `Nothing saved matches <b>${esc(q)}</b>.`);
+      return finish("search:empty");
+    }
+    const lines = hits.map((h) => {
+      const src = h.sourceTitle ? ` <i>— ${esc(h.sourceTitle.slice(0, 45))}</i>` : "";
+      return `• <b>${esc(h.title)}</b> <code>${h.kind}</code>${src}\n   ${esc(h.detail.slice(0, 160))}`;
+    });
+    await reply(msg.chat.id, [`<b>${hits.length}</b> match${hits.length === 1 ? "" : "es"} for <b>${esc(q)}</b>`, "", ...lines].join("\n"));
+    return finish("search:hits");
   }
 
   // Validate before acknowledging, so an unsupported link fails fast and cheap.

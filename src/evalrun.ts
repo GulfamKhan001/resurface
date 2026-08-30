@@ -18,6 +18,9 @@ for (const c of run.cases) {
 console.log(`\n  recall            ${t.recall}   (${t.matched}/${t.expected} labelled items found)`);
 console.log(`  trap avoidance    ${t.trapAvoidance}   (${t.traps - t.trapsHit}/${t.traps} traps avoided)`);
 console.log(`  hallucination     ${t.hallucinationRate}%  (ungrounded, discarded before storage)`);
+// Printed even when zero. A metric that only appears when it is bad is a metric
+// nobody builds a habit of reading.
+console.log(`  detail mentions   ${run.totals.detailMentions}   (rejected things named in a detail — context, not a recommendation; not scored)`);
 if (run.stability) console.log(`  self-agreement    ${run.stability.agreement}   (same input twice, ${run.stability.casesRun} cases)`);
 console.log(`  cost              $${t.usd.toFixed(4)} over ${t.calls} calls`);
 

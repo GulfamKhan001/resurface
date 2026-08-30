@@ -9,55 +9,117 @@
     "the same source. That is a regression baseline, and this project keeps one too",
     "(see baseline.json), but it is labelled as such and never called correctness.",
     "",
-    "Each case carries three things:",
-    "  expect     items a correct extractor MUST find (drives recall)",
-    "  forbid     traps it must NOT find (drives precision)",
-    "  text       the passage, short enough that a human can verify the labels by reading"
+    "Each case carries:",
+    "  expect        items a correct extractor MUST find (drives recall)",
+    "  forbidAsItem  things it must not EXTRACT AS A RECOMMENDATION (matched on the",
+    "                item title, because the title is the claim being made)",
+    "  forbid        strings that must not appear ANYWHERE in the output, title or",
+    "                detail (fabrication traps — invented facts land in the detail)",
+    "  text          the passage, short enough that a human can verify by reading",
+    "",
+    "The two trap kinds were one field until 2026-08-29, and merging them understated",
+    "precision. 'We tried Kubernetes and ripped it out' correctly yields one item —",
+    "systemd — whose detail reads 'an alternative to Kubernetes'. That is accurate and",
+    "useful, and the old check scored it as a precision failure because the forbidden",
+    "word appeared in the prose. Splitting the fields is not a loosening: the",
+    "fabrication traps still match anywhere, and detail mentions are still counted and",
+    "reported, just not scored as if the model had recommended the thing."
   ],
-
   "cases": [
     {
       "id": "recipe-plain",
       "note": "One unambiguous recipe. The floor: if this fails, nothing else matters.",
       "text": "So the thing I keep coming back to is a really simple carbonara. You need guanciale, pecorino romano, egg yolks and black pepper — no cream, ever. The trick is taking the pan off the heat before you add the eggs, otherwise you get scrambled egg pasta. Takes about fifteen minutes start to finish.",
-      "expect": [{ "kind": "recipe", "titleContains": ["carbonara"] }],
+      "expect": [
+        {
+          "kind": "recipe",
+          "titleContains": [
+            "carbonara"
+          ]
+        }
+      ],
       "forbid": []
     },
     {
       "id": "book-vs-mention",
       "note": "A real recommendation next to a book mentioned only as a thing that exists. Extracting the second is a precision failure.",
       "text": "I'd genuinely recommend Designing Data-Intensive Applications, it changed how I think about storage. My cousin has a copy of War and Peace on his shelf that nobody has ever opened, which tells you something about coffee tables.",
-      "expect": [{ "kind": "book", "titleContains": ["data-intensive", "designing"] }],
-      "forbid": ["war and peace"]
+      "expect": [
+        {
+          "kind": "book",
+          "titleContains": [
+            "data-intensive",
+            "designing"
+          ]
+        }
+      ],
+      "forbidAsItem": [
+        "war and peace"
+      ],
+      "forbid": []
     },
     {
       "id": "negation",
       "note": "A tool explicitly rejected. Models routinely extract the noun and drop the negation.",
       "text": "We tried Kubernetes for about six months and honestly it was the wrong call for a team our size — we ripped it out. What actually worked was boring old systemd units on two VMs.",
-      "expect": [{ "kind": "tool", "titleContains": ["systemd"] }],
-      "forbid": ["kubernetes"]
+      "expect": [
+        {
+          "kind": "tool",
+          "titleContains": [
+            "systemd"
+          ]
+        }
+      ],
+      "forbidAsItem": [
+        "kubernetes"
+      ],
+      "forbid": []
     },
     {
       "id": "hypothetical",
       "note": "A place discussed hypothetically, never recommended. Should not be extracted as a place to go.",
       "text": "If I ever had three months free I might walk the Kumano Kodo in Japan, but realistically that is not happening this decade. The walk I actually did last month was the Malvern Hills, which I would recommend to anyone with a spare afternoon.",
-      "expect": [{ "kind": "place", "titleContains": ["malvern"] }],
-      "forbid": ["kumano kodo"]
+      "expect": [
+        {
+          "kind": "place",
+          "titleContains": [
+            "malvern"
+          ]
+        }
+      ],
+      "forbidAsItem": [
+        "kumano kodo"
+      ],
+      "forbid": []
     },
     {
       "id": "empty",
       "note": "Nothing worth saving. Returning [] is the correct answer and is the hardest behaviour to get from a model that wants to be helpful.",
       "text": "Anyway, that is roughly where we got to before the call dropped. Let me know what you think and we can pick it up next week. Thanks again for making the time, it was good to catch up properly.",
       "expect": [],
-      "forbid": ["call", "week", "time"]
+      "forbid": [
+        "call",
+        "week",
+        "time"
+      ]
     },
     {
       "id": "multiple-kinds",
       "note": "Three different kinds in one passage. Tests that the extractor does not collapse everything into 'idea'.",
       "text": "Two things from this week. First, I finally set up Tailscale across all my machines and it removed an entire category of VPN pain. Second, I made the Ottolenghi roast aubergine with buttermilk sauce for the third time — the trick is scoring the flesh deeply. And a thought I keep having: most of my tooling problems are actually naming problems.",
       "expect": [
-        { "kind": "tool", "titleContains": ["tailscale"] },
-        { "kind": "recipe", "titleContains": ["aubergine"] }
+        {
+          "kind": "tool",
+          "titleContains": [
+            "tailscale"
+          ]
+        },
+        {
+          "kind": "recipe",
+          "titleContains": [
+            "aubergine"
+          ]
+        }
       ],
       "forbid": []
     },
@@ -65,7 +127,14 @@
       "id": "attribution",
       "note": "Someone else's recommendation, reported. Still a real recommendation and should be extracted.",
       "text": "Sarah swears by the Kinesis Advantage for her wrists — she has been using one for eight years and says she would not go back to a flat keyboard.",
-      "expect": [{ "kind": "tool", "titleContains": ["kinesis"] }],
+      "expect": [
+        {
+          "kind": "tool",
+          "titleContains": [
+            "kinesis"
+          ]
+        }
+      ],
       "forbid": []
     },
     {
@@ -73,7 +142,11 @@
       "note": "A book named with no detail given. A model that fills in what it knows about the book from training data is fabricating, and the quote check should catch it.",
       "text": "He mentioned Refactoring at one point and then the conversation moved on to something else entirely.",
       "expect": [],
-      "forbid": ["martin fowler", "code smells", "1999"]
+      "forbid": [
+        "martin fowler",
+        "code smells",
+        "1999"
+      ]
     }
   ]
 }

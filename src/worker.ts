@@ -69,7 +69,7 @@ export async function runWorker(opts: {
   const drainTimeoutMs = opts.drainTimeoutMs ?? 120_000;
   let idle = 0;
   const startedAt = Date.now();
-  const tally = { done: 0, retried: 0, dead: 0, lostLease: 0, waitedForBackoff: 0 };
+  const tally = { done: 0, retried: 0, dead: 0, lostLease: 0, waitedForBackoff: 0, hitDrainCeiling: false };
 
   while (!opts.signal?.aborted && idle < stopAfterIdle) {
     const job = await claim(opts.workerId, leaseSeconds);
@@ -81,10 +81,19 @@ export async function runWorker(opts: {
       // Bounded by drainTimeoutMs on purpose: without a ceiling, a genuinely
       // wedged job would keep every worker spinning forever, which is a worse
       // failure than exiting early.
-      if (Date.now() - startedAt < drainTimeoutMs && (await hasPendingWork())) {
-        tally.waitedForBackoff++;
-        await sleep(400);
-        continue;
+      if (await hasPendingWork()) {
+        if (Date.now() - startedAt < drainTimeoutMs) {
+          tally.waitedForBackoff++;
+          await sleep(400);
+          continue;
+        }
+        // The ceiling fired while work was still outstanding. That is the valve
+        // doing its job, but it means this worker is abandoning a job that was
+        // merely waiting on backoff — so the caller cannot distinguish "the queue
+        // stranded a job" from "the run was cut short" unless we say so. Report it
+        // rather than exiting silently and letting the assertion above take the
+        // blame for a clock.
+        tally.hitDrainCeiling = true;
       }
       idle++;
       await sleep(120);

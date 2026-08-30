@@ -22,7 +22,10 @@ interface GoldenCase {
   note: string;
   text: string;
   expect: { kind: string; titleContains: string[] }[];
+  /** Must not appear anywhere in the output — fabrication traps. */
   forbid: string[];
+  /** Must not be extracted AS AN ITEM — matched on title only. */
+  forbidAsItem?: string[];
 }
 
 export interface CaseResult {
@@ -32,6 +35,8 @@ export interface CaseResult {
   matched: number;
   expected: number;
   trapsHit: string[];
+  /** Forbidden-as-item terms that appeared only in a detail. Counted, not scored. */
+  mentionsInDetail: string[];
   recall: number;
   precisionProxy: number;
   items: { kind: string; title: string; trust: number }[];
@@ -43,7 +48,7 @@ export interface EvalRun {
   cases: CaseResult[];
   totals: {
     expected: number; matched: number; recall: number;
-    traps: number; trapsHit: number; trapAvoidance: number;
+    traps: number; trapsHit: number; trapAvoidance: number; detailMentions: number;
     extracted: number; grounded: number; hallucinationRate: number;
     usd: number; calls: number;
   };
@@ -64,9 +69,30 @@ function findsExpectation(items: ExtractedItem[], exp: { kind: string; titleCont
   });
 }
 
-function trapsTriggered(items: ExtractedItem[], forbid: string[]): string[] {
+// Two different questions, deliberately not one function.
+//
+// "Did it FABRICATE this?" has to look at the detail, because that is where an
+// invented fact goes: title "Refactoring", detail "by Martin Fowler, 1999".
+function fabricationTraps(items: ExtractedItem[], forbid: string[]): string[] {
   const hay = items.map((i) => norm(`${i.title} ${i.detail}`));
   return forbid.filter((f) => hay.some((h) => h.includes(norm(f))));
+}
+
+// "Did it RECOMMEND this?" must look at the title alone. The title is the claim;
+// the detail is context, and context legitimately names the thing that was
+// rejected — "systemd, an alternative to Kubernetes" is a correct extraction, not
+// a precision failure.
+function recommendationTraps(items: ExtractedItem[], forbid: string[]): string[] {
+  const titles = items.map((i) => norm(i.title));
+  return forbid.filter((f) => titles.some((t) => t.includes(norm(f))));
+}
+
+function detailOnlyMentions(items: ExtractedItem[], forbid: string[]): string[] {
+  const details = items.map((i) => norm(i.detail));
+  const titles = items.map((i) => norm(i.title));
+  return forbid.filter(
+    (f) => details.some((d) => d.includes(norm(f))) && !titles.some((t) => t.includes(norm(f)))
+  );
 }
 
 async function runCase(c: GoldenCase, spend: ReturnType<typeof newSpend>): Promise<CaseResult> {
@@ -75,7 +101,9 @@ async function runCase(c: GoldenCase, spend: ReturnType<typeof newSpend>): Promi
   const kept = report.kept;
 
   const matched = c.expect.filter((e) => findsExpectation(kept, e)).length;
-  const trapsHit = trapsTriggered(kept, c.forbid);
+  const asItem = c.forbidAsItem ?? [];
+  const trapsHit = [...fabricationTraps(kept, c.forbid), ...recommendationTraps(kept, asItem)];
+  const mentionsInDetail = detailOnlyMentions(kept, asItem);
 
   return {
     id: c.id,
@@ -84,11 +112,14 @@ async function runCase(c: GoldenCase, spend: ReturnType<typeof newSpend>): Promi
     matched,
     expected: c.expect.length,
     trapsHit,
+    mentionsInDetail,
     recall: c.expect.length ? matched / c.expect.length : 1,
     // Not true precision — that needs every extraction labelled, not just the
     // traps. This is "did it avoid the specific mistakes a human anticipated",
     // which is weaker and is named accordingly.
-    precisionProxy: c.forbid.length ? 1 - trapsHit.length / c.forbid.length : 1,
+    precisionProxy: c.forbid.length + asItem.length
+      ? 1 - trapsHit.length / (c.forbid.length + asItem.length)
+      : 1,
     items: kept.map((i) => ({ kind: i.kind, title: i.title, trust: i.trust })),
   };
 }
@@ -107,9 +138,13 @@ export async function runEvals(opts: { stability?: boolean } = {}): Promise<Eval
     expected: results.reduce((n, r) => n + r.expected, 0),
     matched: results.reduce((n, r) => n + r.matched, 0),
     recall: 0,
-    traps: golden.cases.reduce((n, c) => n + c.forbid.length, 0),
+    traps: golden.cases.reduce((n, c) => n + c.forbid.length + (c.forbidAsItem?.length ?? 0), 0),
     trapsHit: results.reduce((n, r) => n + r.trapsHit.length, 0),
     trapAvoidance: 0,
+    // Reported alongside, never folded into the score. A rise here is worth
+    // looking at even while trapAvoidance stays clean: it is the early sign of a
+    // prompt drifting toward discussing things it was told not to endorse.
+    detailMentions: results.reduce((n, r) => n + r.mentionsInDetail.length, 0),
     extracted: results.reduce((n, r) => n + r.extracted, 0),
     grounded: results.reduce((n, r) => n + r.grounded, 0),
     hallucinationRate: 0,

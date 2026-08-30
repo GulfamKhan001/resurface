@@ -26,7 +26,31 @@ const chaos: Chaos = {
   poisonKinds: new Set(["extract"]),
 };
 
+// This harness destroys data. It TRUNCATEs the same tables the bot writes to, in
+// whatever database DATABASE_URL points at — which is the real one, because there
+// is only one. On 2026-08-28 that ate 50 real extracted items mid-session, and the
+// only reason the numbers in the README survived is that they had been copied out
+// minutes earlier.
+//
+// The proper fix is a separate database for the harness. This is the cheap fix:
+// refuse to destroy anything that looks like real content unless told to, in
+// writing. A destructive test that runs silently against production is a worse
+// bug than anything the test is looking for.
 async function reset() {
+  const { rows } = await pool.query<{ n: number }>(
+    `select (select count(*) from items)::int
+          + (select count(*) from extraction_spend)::int as n`
+  );
+  const real = rows[0].n;
+  if (real > 0 && process.env.CHAOS_ALLOW_DESTRUCTIVE !== "1") {
+    console.error(
+      `\nREFUSING TO RUN. This harness truncates assets/jobs/chunks/items, and this ` +
+      `database holds ${real} real extracted row(s).\n` +
+      `Point DATABASE_URL at a scratch database, or re-run with CHAOS_ALLOW_DESTRUCTIVE=1 ` +
+      `if you genuinely mean to erase them.\n`
+    );
+    process.exit(2);
+  }
   // Truncate rather than drop: the schema is the migration's job, not this one's.
   await pool.query(`truncate side_effects, job_runs, chunks, jobs, saves, assets, users restart identity cascade`);
 }
@@ -115,7 +139,11 @@ async function main() {
   const started = Date.now();
   const tallies = await Promise.all(
     Array.from({ length: N_WORKERS }, (_, i) =>
-      runWorker({ workerId: `w${i}`, chaos, leaseSeconds: 6, stopAfterIdle: 12, signal: stop.signal })
+      // drainTimeoutMs must exceed how long the workload actually takes, or the
+      // valve fires mid-run and strands a job that was only in backoff. The
+      // default 120s was under the observed 143s runtime, which is exactly how
+      // this was found: assertion 1 failed on a queue that had done nothing wrong.
+      runWorker({ workerId: `w${i}`, chaos, leaseSeconds: 6, stopAfterIdle: 12, drainTimeoutMs: 300_000, signal: stop.signal })
     )
   );
   stop.abort();
@@ -129,8 +157,9 @@ async function main() {
     (a, t) => ({
       done: a.done + t.done, retried: a.retried + t.retried, dead: a.dead + t.dead,
       lostLease: a.lostLease + t.lostLease, waitedForBackoff: a.waitedForBackoff + t.waitedForBackoff,
+      hitDrainCeiling: a.hitDrainCeiling || t.hitDrainCeiling,
     }),
-    { done: 0, retried: 0, dead: 0, lostLease: 0, waitedForBackoff: 0 }
+    { done: 0, retried: 0, dead: 0, lostLease: 0, waitedForBackoff: 0, hitDrainCeiling: false }
   );
   console.log(`workers finished in ${((Date.now() - started) / 1000).toFixed(1)}s`);
   console.log(`  ${JSON.stringify(agg)}`);
@@ -143,7 +172,16 @@ async function main() {
   const { rows: stuck } = await pool.query<{ n: number }>(
     `select count(*)::int as n from jobs where state in ('queued','leased')`
   );
-  allOk = (await check("every job terminated", stuck[0].n === 0, `${stuck[0].n} still queued/leased`)) && allOk;
+  // A leftover job means one of two very different things, and collapsing them
+  // into one FAIL makes the harness lie. If the drain ceiling fired, the run was
+  // cut short and the property is UNTESTED — reported as inconclusive, still
+  // non-zero exit, because an inconclusive run must not read as a pass.
+  if (stuck[0].n > 0 && agg.hitDrainCeiling) {
+    console.log(`  INCONCLUSIVE  every job terminated — ${stuck[0].n} left, but the drain ceiling fired first, so the run ended before the queue did. Raise drainTimeoutMs; this is not a queue failure.`);
+    allOk = false;
+  } else {
+    allOk = (await check("every job terminated", stuck[0].n === 0, `${stuck[0].n} still queued/leased`)) && allOk;
+  }
 
   // 2 — exactly one effect per completed job. side_effects.job_id is the PK, so a
   // duplicate would have raised on insert; this checks the other direction, that

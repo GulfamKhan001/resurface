@@ -1,6 +1,6 @@
 {
   "promptVersion": "p2-2026-08-28",
-  "at": "2026-08-28T12:33:01.951Z",
+  "at": "2026-08-30T05:17:30.768Z",
   "cases": [
     {
       "id": "recipe-plain",
@@ -9,6 +9,7 @@
       "matched": 1,
       "expected": 1,
       "trapsHit": [],
+      "mentionsInDetail": [],
       "recall": 1,
       "precisionProxy": 1,
       "items": [
@@ -26,6 +27,7 @@
       "matched": 1,
       "expected": 1,
       "trapsHit": [],
+      "mentionsInDetail": [],
       "recall": 1,
       "precisionProxy": 1,
       "items": [
@@ -42,16 +44,17 @@
       "grounded": 1,
       "matched": 1,
       "expected": 1,
-      "trapsHit": [
+      "trapsHit": [],
+      "mentionsInDetail": [
         "kubernetes"
       ],
       "recall": 1,
-      "precisionProxy": 0,
+      "precisionProxy": 1,
       "items": [
         {
           "kind": "tool",
-          "title": "systemd units on two VMs",
-          "trust": 0.95
+          "title": "systemd units on VMs",
+          "trust": 0.98
         }
       ]
     },
@@ -62,6 +65,7 @@
       "matched": 1,
       "expected": 1,
       "trapsHit": [],
+      "mentionsInDetail": [],
       "recall": 1,
       "precisionProxy": 1,
       "items": [
@@ -79,17 +83,19 @@
       "matched": 0,
       "expected": 0,
       "trapsHit": [],
+      "mentionsInDetail": [],
       "recall": 1,
       "precisionProxy": 1,
       "items": []
     },
     {
       "id": "multiple-kinds",
-      "extracted": 3,
-      "grounded": 3,
+      "extracted": 2,
+      "grounded": 2,
       "matched": 2,
       "expected": 2,
       "trapsHit": [],
+      "mentionsInDetail": [],
       "recall": 1,
       "precisionProxy": 1,
       "items": [
@@ -101,12 +107,7 @@
         {
           "kind": "recipe",
           "title": "Ottolenghi roast aubergine with buttermilk sauce",
-          "trust": 0.96
-        },
-        {
-          "kind": "idea",
-          "title": "Naming problems as root cause of tooling issues",
-          "trust": 0.93
+          "trust": 0.97
         }
       ]
     },
@@ -117,6 +118,7 @@
       "matched": 1,
       "expected": 1,
       "trapsHit": [],
+      "mentionsInDetail": [],
       "recall": 1,
       "precisionProxy": 1,
       "items": [
@@ -134,6 +136,7 @@
       "matched": 0,
       "expected": 0,
       "trapsHit": [],
+      "mentionsInDetail": [],
       "recall": 1,
       "precisionProxy": 1,
       "items": []
@@ -144,16 +147,17 @@
     "matched": 7,
     "recall": 1,
     "traps": 9,
-    "trapsHit": 1,
-    "trapAvoidance": 0.889,
-    "extracted": 8,
-    "grounded": 8,
+    "trapsHit": 0,
+    "trapAvoidance": 1,
+    "detailMentions": 1,
+    "extracted": 7,
+    "grounded": 7,
     "hallucinationRate": 0,
-    "usd": 0.012906,
+    "usd": 0.012476,
     "calls": 12
   },
   "stability": {
     "casesRun": 4,
-    "agreement": 1
+    "agreement": 0.75
   }
 }
