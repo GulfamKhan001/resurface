@@ -14,7 +14,7 @@ Calling an LLM and rendering the response is CRUD with extra steps. The engineer
 
 | | |
 |---|---|
-| **Cost cascade** | Free page text → free podcast transcript → free video description → metadata → paid ASR. A runtime choice per item, with the cost recorded on the trace span. |
+| **Cost cascade** | Free page text → free video description → metadata, with paid ASR as the unwired last resort. A runtime choice per item, with the cost recorded on the trace span. |
 | **Content-addressed dedup** | Ten people saving one video produce one asset, one job, ten saves. Enforced by a partial unique index, not by check-then-insert. Verified: 10 concurrent enqueues created **1** job. |
 | **Resumability** | `chunks` is a table, not a column. A worker that dies at chunk 7 of 12 resumes at 7 and does not re-spend on 1–6. Checkpoints are scoped to an extractor version, so a prompt change invalidates them. |
 | **Fair queueing** | Leases, visibility timeouts, fencing and per-user fairness — `ORDER BY in_flight ASC`, no rate limiter, no quota table. |
@@ -32,12 +32,12 @@ Every number here came from a run, on the date shown. Where something was not me
 | Tier | Cost | Hit rate / result |
 |---|---|---|
 | `page_text` | free | martinfowler.com 1,801 chars · changelog.com **111,902** chars |
-| `rss_transcript` | free | Changelog **777/1013** episodes (77%) · Simplecast **0/2959** (0%) |
+| `rss_transcript` | free | **parser written and measured, not wired.** Changelog **777/1013** episodes (77%) · Simplecast **0/2959** (0%) |
 | `yt_description` | free | 1,740 usable chars from a Shorts link after stripping promo lines |
 | `oembed_metadata` | free | title and channel only — the honest fallback |
 | `paid_asr` | $0.0043/min | **not wired.** Deepgram's published Nova-3 batch price, never exercised |
 
-That **77% against 0%** on two podcast feeds is the entire argument for having a paid fallback at all, and it is the kind of number the original design could only guess at.
+That **77% against 0%** on two podcast feeds is the entire argument for having a paid fallback at all, and it is the kind of number the original design could only guess at. It is also, currently, only a number: `findTranscriptUrl()` parses the `<podcast:transcript>` tag correctly and nothing calls it, because reaching it needs feed discovery from an episode URL that is not built. For Changelog the transcript is on the page anyway and `page_text` picks it up — 111,902 characters of it.
 
 ### End-to-end ingest (2026-08-30)
 
@@ -161,6 +161,7 @@ Stated plainly, because a diagram that shows aspirations as boxes is a lie told 
 
 - **No Cloudflare Workers edge tier.** `resolve()` is pure and network-free so it *can* run in a 10 ms CPU budget, and the tracer is hand-rolled against W3C Trace Context and OTLP/HTTP+JSON specifically so it runs where `AsyncLocalStorage` does not exist. Neither has been deployed.
 - **No paid ASR.** The cascade has the tier and the price; nothing calls Deepgram. Every cost number here is Claude extraction only.
+- **No RSS transcript tier.** The `<podcast:transcript>` parser exists and its hit rate is measured, but nothing invokes it — feed discovery from an episode URL is unbuilt, so `rss_transcript` is a tier `fetchSource` can never return. Listed here rather than quietly left in the table, because it was in the table for two days before anyone checked.
 - **No object storage.** No audio or transcripts are retained.
 - **No Grafana Cloud.** Tracing is verified against a local OTLP receiver on `:4318` — 9 spans, one trace id, single root, `worker.process` a child of `edge.accept` across a simulated queue boundary — and asserted against what the collector actually received, not what the code intended to send. It has never pointed at a hosted backend.
 - **No web UI.** Telegram is the only front door.

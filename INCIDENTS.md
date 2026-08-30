@@ -122,6 +122,16 @@ Search now ranks by `ts_rank × trust`, because relevance alone puts the confide
 
 ---
 
+### A tier that could never be returned
+
+The rewritten README shipped with `rss_transcript` in the cost-cascade table, hit rate and all. `findTranscriptUrl()` parses the `<podcast:transcript>` tag correctly, is exported, and is **called by nothing** — reaching it needs feed discovery from an episode URL, which was never built. `fetchSource` cannot return that tier.
+
+So the honest-numbers rewrite, whose stated purpose was removing claims the code does not support, introduced one. It survived two days and was caught only by grepping for callers while writing this file.
+
+**Generalises to:** a measurement is not an implementation. Having benchmarked something proves you can reach it *by hand*, not that the system reaches it.
+
+---
+
 ## Smaller, sharper
 
 - **`FOR UPDATE OF j`, not `FOR UPDATE`.** Postgres refuses to lock "the nullable side of an outer join" and the fairness CTE is `LEFT JOIN`ed. Without `OF j` the claim query does not run at all.
